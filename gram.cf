@@ -1,0 +1,86 @@
+entrypoints Program;
+
+Prog.		Program ::= [ Decl ];
+
+Dfun.		Decl ::= "func" Type LIdent "(" [PDecl] ")" "NEWLINE" StmtB;
+Dproc.	Decl ::= "func" LIdent "(" [PDecl] ")" "NEWLINE" StmtB;
+Drec.		Decl ::= "def" RecName "NEWLINE" "INDENT" [ VDecl ] "DEDENT";
+Dstmt.	Decl ::= StmtB;
+
+Slist.	StmtB ::= StmtL "NEWLINE";
+Sblock.	StmtB ::= "INDENT" [StmtL] "DEDENT" "NEWLINE";
+
+Slst.		StmtL ::= [Stmt];
+
+separator nonempty StmtL "NEWLINE";
+
+Sif.		Stmt ::= "if" Exp "then" StmtB;
+Sife.		Stmt ::= "if" Exp "then" StmtB "else" StmtB;
+Swh.		Stmt ::= "while" Exp "do" StmtB;
+Sfor.		Stmt ::= "for" LIdent "in" Exp "do" StmtB;
+Sret.		Stmt ::= "return" Exp;
+Sass.		Stmt ::= LIdent "=" Exp;
+Sdecl.	Stmt ::= SDecl;
+
+Svar.		SDecl ::= VDecl;
+Svas.		SDecl ::= VDecl "=" Exp;
+
+VDcl.		VDecl ::= Type LIdent;
+
+PDcl.		PDecl ::= VDecl;
+
+separator PDecl ",";
+separator nonempty VDecl "NEWLINE";
+
+separator nonempty Stmt ";";
+separator nonempty Decl "NEWLINE";
+
+Edarr.	Exp ::= "[" [Exp] "]";
+Eor.		Exp2 ::= Exp2 "||" Exp3;
+Eand.		Exp3 ::= Exp3 "&&" Exp4;
+Eeq.		Exp4 ::= Exp4 "==" Exp5;
+Edif.		Exp4 ::= Exp4 "!=" Exp5;
+Egt.		Exp5 ::= Exp5 ">" Exp6;
+Egte.		Exp5 ::= Exp5 ">=" Exp6;
+Elt.		Exp5 ::= Exp5 "<" Exp6;
+Elte.		Exp5 ::= Exp5 "<=" Exp6;
+Eadd.		Exp6 ::= Exp6 "+" Exp7;
+Esub.		Exp6 ::= Exp6 "-" Exp7;
+Emul.		Exp7 ::= Exp7 "*" Exp8;
+Ediv.		Exp7 ::= Exp7 "/" Exp8;
+Eneg.		Exp8 ::= "!" Exp9;
+Emin.		Exp8 ::= "-" Exp9;
+Earr.		Exp9 ::= Exp9 "[" Exp "]";
+Efn.		Exp9 ::= LIdent "(" ")";
+Efnp.		Exp9 ::= LIdent "(" [Exp] ")";
+Evar.		Exp10 ::= [ LIdent ];
+Econ.		Exp10 ::= Constant;
+
+_.			Exp  ::= Exp2;
+_.			Exp2 ::= Exp3;
+_.			Exp3 ::= Exp4;
+_.			Exp4 ::= Exp5;
+_.			Exp5 ::= Exp6;
+_.			Exp6 ::= Exp7;
+_.			Exp7 ::= Exp8;
+_.			Exp8 ::= Exp9;
+_.			Exp9 ::= Exp10;
+_.			Exp10 ::= "(" Exp ")";
+
+Efalse.	Constant ::= "false";
+Etrue.	Constant ::= "true";
+Eint.		Constant ::= Integer;
+
+Tint.		Type ::= "Int";
+Tbool.	Type ::= "Bool";
+Trec.		Type ::= RecName;
+Tarr.		Type ::= "Array" Type;
+
+separator nonempty Exp ",";
+
+token RecName (upper (letter | digit | '_')* );
+token LIdent (lower (letter | digit | '_')* );
+
+separator nonempty LIdent ".";
+
+comment "//";

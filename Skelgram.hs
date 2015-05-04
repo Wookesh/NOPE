@@ -29,12 +29,16 @@ transDecl x = case x of
   Dfun type' lident pdecls stmtb  -> failure x
   Dproc lident pdecls stmtb  -> failure x
   Drec recname vdecls  -> failure x
-  Dstmt stmtb  -> failure x
+  Dstmt stmtline  -> failure x
+
+
+transStmtLine :: StmtLine -> Result
+transStmtLine x = case x of
+  Sline stmtl  -> failure x
 
 
 transStmtB :: StmtB -> Result
 transStmtB x = case x of
-  Slist stmtl  -> failure x
   Sblock stmtls  -> failure x
 
 
@@ -50,6 +54,7 @@ transStmt x = case x of
   Swh exp stmtb  -> failure x
   Sfor lident exp stmtb  -> failure x
   Sret exp  -> failure x
+  Sfcll exp  -> failure x
   Sass lident exp  -> failure x
   Sdecl sdecl  -> failure x
 

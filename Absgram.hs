@@ -13,12 +13,15 @@ data Decl =
    Dfun Type LIdent [PDecl] StmtB
  | Dproc LIdent [PDecl] StmtB
  | Drec RecName [VDecl]
- | Dstmt StmtB
+ | Dstmt StmtLine
+  deriving (Eq,Ord,Show)
+
+data StmtLine =
+   Sline StmtL
   deriving (Eq,Ord,Show)
 
 data StmtB =
-   Slist StmtL
- | Sblock [StmtL]
+   Sblock [StmtL]
   deriving (Eq,Ord,Show)
 
 data StmtL =
@@ -31,6 +34,7 @@ data Stmt =
  | Swh Exp StmtB
  | Sfor LIdent Exp StmtB
  | Sret Exp
+ | Sfcll Exp
  | Sass LIdent Exp
  | Sdecl SDecl
   deriving (Eq,Ord,Show)

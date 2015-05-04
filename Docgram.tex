@@ -55,7 +55,7 @@ The symbols used in gram are the following: \\
 
 \begin{tabular}{lll}
 {\symb{(}} &{\symb{)}} &{\symb{{$=$}}} \\
-{\symb{,}} &{\symb{;}} &{\symb{[}} \\
+{\symb{;}} &{\symb{,}} &{\symb{[}} \\
 {\symb{]}} &{\symb{{$|$}{$|$}}} &{\symb{\&\&}} \\
 {\symb{{$=$}{$=$}}} &{\symb{!{$=$}}} &{\symb{{$>$}}} \\
 {\symb{{$>$}{$=$}}} &{\symb{{$<$}}} &{\symb{{$<$}{$=$}}} \\
@@ -80,12 +80,20 @@ All other symbols are terminals.\\
 {\nonterminal{Decl}} & {\arrow}  &{\terminal{func}} {\nonterminal{Type}} {\nonterminal{LIdent}} {\terminal{(}} {\nonterminal{ListPDecl}} {\terminal{)}} {\terminal{NEWLINE}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{func}} {\nonterminal{LIdent}} {\terminal{(}} {\nonterminal{ListPDecl}} {\terminal{)}} {\terminal{NEWLINE}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{def}} {\nonterminal{RecName}} {\terminal{NEWLINE}} {\terminal{INDENT}} {\nonterminal{ListVDecl}} {\terminal{DEDENT}}  \\
- & {\delimit}  &{\nonterminal{StmtB}}  \\
+ & {\delimit}  &{\nonterminal{StmtLine}}  \\
 \end{tabular}\\
 
 \begin{tabular}{lll}
-{\nonterminal{StmtB}} & {\arrow}  &{\nonterminal{StmtL}} {\terminal{NEWLINE}}  \\
- & {\delimit}  &{\terminal{INDENT}} {\nonterminal{ListStmtL}} {\terminal{DEDENT}} {\terminal{NEWLINE}}  \\
+{\nonterminal{ListDecl}} & {\arrow}  &{\nonterminal{Decl}}  \\
+ & {\delimit}  &{\nonterminal{Decl}} {\terminal{NEWLINE}} {\nonterminal{ListDecl}}  \\
+\end{tabular}\\
+
+\begin{tabular}{lll}
+{\nonterminal{StmtLine}} & {\arrow}  &{\nonterminal{StmtL}}  \\
+\end{tabular}\\
+
+\begin{tabular}{lll}
+{\nonterminal{StmtB}} & {\arrow}  &{\terminal{INDENT}} {\nonterminal{ListStmtL}} {\terminal{DEDENT}}  \\
 \end{tabular}\\
 
 \begin{tabular}{lll}
@@ -103,8 +111,14 @@ All other symbols are terminals.\\
  & {\delimit}  &{\terminal{while}} {\nonterminal{Exp}} {\terminal{do}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{for}} {\nonterminal{LIdent}} {\terminal{in}} {\nonterminal{Exp}} {\terminal{do}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{return}} {\nonterminal{Exp}}  \\
+ & {\delimit}  &{\nonterminal{Exp}}  \\
  & {\delimit}  &{\nonterminal{LIdent}} {\terminal{{$=$}}} {\nonterminal{Exp}}  \\
  & {\delimit}  &{\nonterminal{SDecl}}  \\
+\end{tabular}\\
+
+\begin{tabular}{lll}
+{\nonterminal{ListStmt}} & {\arrow}  &{\nonterminal{Stmt}}  \\
+ & {\delimit}  &{\nonterminal{Stmt}} {\terminal{;}} {\nonterminal{ListStmt}}  \\
 \end{tabular}\\
 
 \begin{tabular}{lll}
@@ -129,16 +143,6 @@ All other symbols are terminals.\\
 \begin{tabular}{lll}
 {\nonterminal{ListVDecl}} & {\arrow}  &{\nonterminal{VDecl}}  \\
  & {\delimit}  &{\nonterminal{VDecl}} {\terminal{NEWLINE}} {\nonterminal{ListVDecl}}  \\
-\end{tabular}\\
-
-\begin{tabular}{lll}
-{\nonterminal{ListStmt}} & {\arrow}  &{\nonterminal{Stmt}}  \\
- & {\delimit}  &{\nonterminal{Stmt}} {\terminal{;}} {\nonterminal{ListStmt}}  \\
-\end{tabular}\\
-
-\begin{tabular}{lll}
-{\nonterminal{ListDecl}} & {\arrow}  &{\nonterminal{Decl}}  \\
- & {\delimit}  &{\nonterminal{Decl}} {\terminal{NEWLINE}} {\nonterminal{ListDecl}}  \\
 \end{tabular}\\
 
 \begin{tabular}{lll}

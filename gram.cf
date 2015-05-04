@@ -5,10 +5,13 @@ Prog.		Program ::= [ Decl ];
 Dfun.		Decl ::= "func" Type LIdent "(" [PDecl] ")" "NEWLINE" StmtB;
 Dproc.	Decl ::= "func" LIdent "(" [PDecl] ")" "NEWLINE" StmtB;
 Drec.		Decl ::= "def" RecName "NEWLINE" "INDENT" [ VDecl ] "DEDENT";
-Dstmt.	Decl ::= StmtB;
+Dstmt.	Decl ::= StmtLine;
 
-Slist.	StmtB ::= StmtL "NEWLINE";
-Sblock.	StmtB ::= "INDENT" [StmtL] "DEDENT" "NEWLINE";
+separator nonempty Decl "NEWLINE";
+
+Sline.	StmtLine ::= StmtL;
+
+Sblock.	StmtB ::= "INDENT" [StmtL] "DEDENT";
 
 Slst.		StmtL ::= [Stmt];
 
@@ -19,8 +22,11 @@ Sife.		Stmt ::= "if" Exp "then" StmtB "else" StmtB;
 Swh.		Stmt ::= "while" Exp "do" StmtB;
 Sfor.		Stmt ::= "for" LIdent "in" Exp "do" StmtB;
 Sret.		Stmt ::= "return" Exp;
+Sfcll.	Stmt ::= Exp;
 Sass.		Stmt ::= LIdent "=" Exp;
 Sdecl.	Stmt ::= SDecl;
+
+separator nonempty Stmt ";";
 
 Svar.		SDecl ::= VDecl;
 Svas.		SDecl ::= VDecl "=" Exp;
@@ -32,8 +38,6 @@ PDcl.		PDecl ::= VDecl;
 separator PDecl ",";
 separator nonempty VDecl "NEWLINE";
 
-separator nonempty Stmt ";";
-separator nonempty Decl "NEWLINE";
 
 Edarr.	Exp ::= "[" [Exp] "]";
 Eor.		Exp2 ::= Exp2 "||" Exp3;

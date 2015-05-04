@@ -101,16 +101,20 @@ instance Print Decl where
    Dfun type' lident pdecls stmtb -> prPrec i 0 (concatD [doc (showString "func") , prt 0 type' , prt 0 lident , doc (showString "(") , prt 0 pdecls , doc (showString ")") , doc (showString "NEWLINE") , prt 0 stmtb])
    Dproc lident pdecls stmtb -> prPrec i 0 (concatD [doc (showString "func") , prt 0 lident , doc (showString "(") , prt 0 pdecls , doc (showString ")") , doc (showString "NEWLINE") , prt 0 stmtb])
    Drec recname vdecls -> prPrec i 0 (concatD [doc (showString "def") , prt 0 recname , doc (showString "NEWLINE") , doc (showString "INDENT") , prt 0 vdecls , doc (showString "DEDENT")])
-   Dstmt stmtb -> prPrec i 0 (concatD [prt 0 stmtb])
+   Dstmt stmtline -> prPrec i 0 (concatD [prt 0 stmtline])
 
   prtList es = case es of
    [x] -> (concatD [prt 0 x])
    x:xs -> (concatD [prt 0 x , doc (showString "NEWLINE") , prt 0 xs])
 
+instance Print StmtLine where
+  prt i e = case e of
+   Sline stmtl -> prPrec i 0 (concatD [prt 0 stmtl])
+
+
 instance Print StmtB where
   prt i e = case e of
-   Slist stmtl -> prPrec i 0 (concatD [prt 0 stmtl , doc (showString "NEWLINE")])
-   Sblock stmtls -> prPrec i 0 (concatD [doc (showString "INDENT") , prt 0 stmtls , doc (showString "DEDENT") , doc (showString "NEWLINE")])
+   Sblock stmtls -> prPrec i 0 (concatD [doc (showString "INDENT") , prt 0 stmtls , doc (showString "DEDENT")])
 
 
 instance Print StmtL where
@@ -128,6 +132,7 @@ instance Print Stmt where
    Swh exp stmtb -> prPrec i 0 (concatD [doc (showString "while") , prt 0 exp , doc (showString "do") , prt 0 stmtb])
    Sfor lident exp stmtb -> prPrec i 0 (concatD [doc (showString "for") , prt 0 lident , doc (showString "in") , prt 0 exp , doc (showString "do") , prt 0 stmtb])
    Sret exp -> prPrec i 0 (concatD [doc (showString "return") , prt 0 exp])
+   Sfcll exp -> prPrec i 0 (concatD [prt 0 exp])
    Sass lident exp -> prPrec i 0 (concatD [prt 0 lident , doc (showString "=") , prt 0 exp])
    Sdecl sdecl -> prPrec i 0 (concatD [prt 0 sdecl])
 

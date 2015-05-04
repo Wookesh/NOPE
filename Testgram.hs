@@ -3,6 +3,7 @@
 
 module Main where
 
+
 import System.IO ( stdin, hGetContents )
 import System.Environment ( getArgs, getProgName )
 
@@ -15,7 +16,6 @@ import Evalgram
 
 
 
-
 import ErrM
 
 type ParseFun a = [Token] -> Err a
@@ -23,6 +23,23 @@ type ParseFun a = [Token] -> Err a
 myLLexer = myLexer
 
 type Verbosity = Int
+
+
+-- preprocessLine :: (String, Integer) -> Integer -> (String, Integer)
+-- preprocessLine (s, prevIndent) currIndent | currIndent == prevIndent = (s, prevIndent)
+-- 														| currIndent == prevIndent + 1 = ("INDENT " ++ s. currIndent)
+-- 														| currIndent < prevIndent = ()
+-- 
+-- 
+-- removeIndent :: String -> String
+-- removeIndent [] = []
+-- removeIndent (x:xs) | x == '\t' = removeIndent xs
+-- 						  | otherwise = x:xs
+-- 
+-- countIndent :: String -> Integer
+-- countIndent [] = 0
+-- countIndent (x:xs) | x == '\t' = (countIndent xs) + 1
+-- 						 | otherwise = 0
 
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = if v > 1 then putStrLn s else return ()
@@ -37,12 +54,12 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrV v $ show ts
                           putStrLn s
            Ok  tree -> do putStrLn "\nParse Successful!"
-                          putStrLn $ "\n[End State]" ++ (show (evalProgram tree)) ++ "\n\n"
+                          putStrLn $ "\n[End State]\n\n" ++ (show $ evalProgram tree)
                           showTree v tree
 
 
 
-showTree :: (Show a, Print a) => Int -> a -> IO ()
+showTree :: (Show Program, Print Program) => Int -> Program -> IO ()
 showTree v tree
  = do
       putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree

@@ -36,8 +36,8 @@ The reserved words used in gram are the following:
   | ``true`` | ``while`` |  | 
 
 The symbols used in gram are the following:
-  | ( | ) | = | ,
-  | ; | [ | ] | ||
+  | ( | ) | = | ;
+  | , | [ | ] | ||
   | && | == | != | >
   | >= | < | <= | +
   | - | * | / | !
@@ -56,9 +56,11 @@ All other symbols are terminals.
   | //Decl// | -> | ``func`` //Type// //LIdent// ``(`` //[PDecl]// ``)`` ``NEWLINE`` //StmtB// 
   |  |  **|**  | ``func`` //LIdent// ``(`` //[PDecl]// ``)`` ``NEWLINE`` //StmtB// 
   |  |  **|**  | ``def`` //RecName// ``NEWLINE`` ``INDENT`` //[VDecl]// ``DEDENT`` 
-  |  |  **|**  | //StmtB// 
-  | //StmtB// | -> | //StmtL// ``NEWLINE`` 
-  |  |  **|**  | ``INDENT`` //[StmtL]// ``DEDENT`` ``NEWLINE`` 
+  |  |  **|**  | //StmtLine// 
+  | //[Decl]// | -> | //Decl// 
+  |  |  **|**  | //Decl// ``NEWLINE`` //[Decl]// 
+  | //StmtLine// | -> | //StmtL// 
+  | //StmtB// | -> | ``INDENT`` //[StmtL]// ``DEDENT`` 
   | //StmtL// | -> | //[Stmt]// 
   | //[StmtL]// | -> | //StmtL// 
   |  |  **|**  | //StmtL// ``NEWLINE`` //[StmtL]// 
@@ -67,8 +69,11 @@ All other symbols are terminals.
   |  |  **|**  | ``while`` //Exp// ``do`` //StmtB// 
   |  |  **|**  | ``for`` //LIdent// ``in`` //Exp// ``do`` //StmtB// 
   |  |  **|**  | ``return`` //Exp// 
+  |  |  **|**  | //Exp// 
   |  |  **|**  | //LIdent// ``=`` //Exp// 
   |  |  **|**  | //SDecl// 
+  | //[Stmt]// | -> | //Stmt// 
+  |  |  **|**  | //Stmt// ``;`` //[Stmt]// 
   | //SDecl// | -> | //VDecl// 
   |  |  **|**  | //VDecl// ``=`` //Exp// 
   | //VDecl// | -> | //Type// //LIdent// 
@@ -78,10 +83,6 @@ All other symbols are terminals.
   |  |  **|**  | //PDecl// ``,`` //[PDecl]// 
   | //[VDecl]// | -> | //VDecl// 
   |  |  **|**  | //VDecl// ``NEWLINE`` //[VDecl]// 
-  | //[Stmt]// | -> | //Stmt// 
-  |  |  **|**  | //Stmt// ``;`` //[Stmt]// 
-  | //[Decl]// | -> | //Decl// 
-  |  |  **|**  | //Decl// ``NEWLINE`` //[Decl]// 
   | //Exp// | -> | ``[`` //[Exp]// ``]`` 
   |  |  **|**  | //Exp2// 
   | //Exp2// | -> | //Exp2// ``||`` //Exp3// 

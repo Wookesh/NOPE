@@ -5,14 +5,7 @@ import Data.Map as M
 import Control.Monad.State
 import Data.Maybe
 
-data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [(Type, Value)] deriving (Eq,Ord,Show)
-
-
--- data Type = TInt | TBool | TArr Type | TRec
-
--- data Val = Int | Bool deriving (Eq,Ord,Show)
-
-type Val = Int
+data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [(Type, Value)] | None deriving (Eq,Ord,Show)
 
 type Loc = Int 
 
@@ -33,6 +26,10 @@ clearStore = (M.empty, 0)
 initialState :: PState
 initialState = PS (clearEnv, clearStore)
 
+-------------------------------------
+-- Environment and Store functions --
+-------------------------------------
+
 addVar lident loc = do
 	PS (env, s) <- get
 	put $ PS (M.insert lident (Var loc) env, s)
@@ -42,25 +39,40 @@ getLoc lident = do
 	case M.lookup lident env of
 		Just (Fun _) -> fail "Expectec variable, not function name"
 		Just (Var l) -> return $ l
-		Nothing -> fail "Undefined variable"
+		Nothing -> fail $ "Undefined variable" ++ (show lident) ++ ".\n"
+
+getVal lident = do
+	loc <- getLoc lident
+	PS (_, (store, _)) <- get
+	case M.lookup loc store of 
+		(Just val) -> return val
+		Nothing -> fail "Location unalloced"
 
 alloc typ = do
 	PS (e, (m, loc)) <- get
 	put $ PS (e, (M.insert (loc + 1) (typ, defaultValue typ) m, loc + 1))
 	return $ loc + 1
 
+assign val loc = do
+	PS (e, (store, l)) <- get
+	case M.lookup loc store of
+		Just (typ, _) -> if (typeMatches typ val) then
+				put $ PS (e, (M.insert loc (typ, val) store, l))
+			else
+				fail $ "Expected " ++ (show typ) ++ ", got " ++ (show (toType val)) ++ ".\n"
+		Nothing -> fail "Location unalloced"
+
+
 
 defaultValue Tint = I 0
 defaultValue Tbool = B False
 defaultValue (Tarr type_) = Ar type_ []
-
 
 typeMatches Tint (I _) = True
 typeMatches Tbool (B _) = True
 typeMatches (Tarr typ1) (Ar typ2 _) = typ1 == typ2
 typeMatches (Trec rName1) (Rc rName2 _) = rName1 == rName2
 typeMatches _ _ = False
-
 
 toType (I _) = Tint
 toType (B _) = Tbool
@@ -73,62 +85,144 @@ valueToBool _ = False
 valueToInt (I i) = i
 valueToInt _ = 0
 
-assign val loc = do
-	PS (e, (store, l)) <- get
-	case M.lookup loc store of
-		Just (typ, _) -> if (typeMatches typ val) then
-				put $ PS (e, (M.insert loc (typ, val) store, l))
-			else
-				fail $ "Expected " ++ (show typ) ++ ", got " ++ (show (toType val)) ++ ".\n"
-		Nothing -> fail "Location unalloced"
-
 checkType e1 e2 type_ = (toType e1) == type_ && (toType e2) == type_ 
 checkType_ e1 e2 = (toType e1) == (toType e2)
 
-typeMissmatch t1 t2 type_ = "Could not match type " ++ (show t1) ++ " or " ++ (show t2) ++ " with type " ++ (show type_) ++ ".\n"
-typeMissmatch_ t1 t2 = "Could not match type " ++ (show t1) ++ " and " ++ (show t2) ++ ".\n"
-typeMissmatchS t typ = "Could not match type " ++ (show t) ++ " with " ++ (show typ) ++ ".\n"
+typeMissmatch t1 t2 type_ = "Could not match type (" ++ (show t1) ++ ") or (" ++ (show t2) ++ ") with type " ++ (show type_) ++ ".\n"
+typeMissmatch_ t1 t2 = "Could not match type (" ++ (show t1) ++ ") and (" ++ (show t2) ++ ").\n"
+typeMissmatchS t typ = "Could not match type (" ++ (show t) ++ ") with " ++ (show typ) ++ ".\n"
 
-evalProgram p = execState (evalProg p) initialState
 
-evalProg (Prog (d:dl)) = do
-	evalDecl d
+-------------
+-- PROGRAM --
+-------------
 
-evalDecl (Dstmt stmtB) = do
-	evalStmtB stmtB
+evalProgram p = runState (evalProg p) initialState
 
-evalStmtB (Slist sList) = do
-	evalStmtL sList
+evalProg (Prog decls) = do
+	val <- foldM evalDecl None $ decls
+	return val
 
-evalStmtL (Slst (s:sl)) = do
-	evalStmt s
+------------------
+-- DECLARATIONS --
+------------------
 
--- evalDecl (env, store) (Dstmt stmtB) = return $ evalStmtB (Just (env, store)) stmtB
+evalDecl val (Dstmt stmtL) = do
+	val <- evalStmtLine val stmtL
+	return val
+
 -- evalDecl (env, store) (Dfun type_ ident pDecl stmtB) = return $ error "pepe"
 -- evalDecl (env, store) (Dproc ident pDecl stmtB) = return $ error "pepe"
 -- evalDecl (env, store) (Drec recName vDecl) = return $ error "pepe"
 
--- evalStmtB (env, store) (Slist sList) = return $ evalStmtL (Just (env, store)) sList
--- evalStmtB (env, store) (Sblock stmtList) = return $ foldM evalStmtL (Just (env, store)) stmtList 
--- 
--- evalStmtL (env, store) (Slst sList) = return $ foldM evalStmt (Just (env, store)) sList
+---------------------------------
+-- STATEMENTS BLOCKS AND LISTS --
+---------------------------------
 
-evalStmt (Sdecl sDecl) = do
-	evalSDecl sDecl
+evalStmtLine val (Sline stmtL) = do
+	val <- evalStmtL val stmtL
+	return val
 
-evalStmt (Sass lident expr) = do
+evalStmtB val (Sblock stmtL) = do
+	val <- foldM evalStmtL val $ stmtL
+	return val
+
+evalStmtL val (Slst stmts) = do
+	val <- foldM evalStmt val $ stmts
+	return val
+
+----------------
+-- STATEMENTS --
+----------------
+
+-- if expr then stmt
+evalStmt None (Sif expr stmtB) = do
+	v <- evalExpr expr
+	if ((toType v) == Tbool) then
+		if (valueToBool v) then do
+			val <- evalStmtB None stmtB
+			return val 
+		else 
+			return None
+	else
+		fail $ typeMissmatchS v Tbool
+
+-- if expr then stmt else stmt
+evalStmt None (Sife expr stmtB1 stmtB2) = do
+	v <- evalExpr expr
+	if ((toType v) == Tbool) then
+		if (valueToBool v) then do
+			val <- evalStmtB None stmtB1
+			return val 
+		else do
+			val <- evalStmtB None stmtB2
+			return val 
+	else
+		fail $ typeMissmatchS v Tbool
+
+-- while expr stmt
+evalStmt None stmt@(Swh expr stmtB) = do
+	v <- evalExpr expr
+	if ((toType v) == Tbool) then
+		if (valueToBool v) then do
+			val <- evalStmtB None stmtB
+			val <- evalStmt val stmt
+			return val 
+		else 
+			return None
+	else
+		fail $ typeMissmatchS v Tbool
+
+--  | Sfor LIdent Exp StmtB
+
+-- return expr
+evalStmt None (Sret expr) = do
+	v <- evalExpr expr
+	return v
+
+-- function call or expression without direct effect
+evalStmt None (Sfcll expr) = do
+	val <- evalExpr expr
+	return None
+
+-- var = expr
+evalStmt None (Sass lident expr) = do
 	v <- evalExpr expr
 	loc <- getLoc lident
 	assign v loc
+	return None
+
+-- Type var
+evalStmt None (Sdecl sDecl) = do
+	evalSDecl sDecl
+	return None
+
+-- passing non None value
+evalStmt val _ = return val
+
+
+---------------------------
+-- VARAIBLE DECLARATIONS --
+---------------------------
 
 evalSDecl (Svar vDecl) = do
-	evalVDecl vDecl
+	loc <- evalVDecl vDecl
+	return None
+
+evalSDecl (Svas vDecl expr) = do
+	loc <- evalVDecl vDecl
+	val <- evalExpr expr
+	assign val loc
+	return None
 
 evalVDecl (VDcl typ lident) = do
 	loc <- alloc typ
 	addVar lident loc
+	return loc
 
---  EXPRESIONS --
+----------------
+-- EXPRESIONS --
+----------------
 
 --    Edarr [Exp]
 evalExpr (Eor e1 e2) = do
@@ -243,11 +337,17 @@ evalExpr (Emin e) = do
 	else
 		fail $ typeMissmatchS v Tint
 
-
 --  | Earr Exp Exp
 --  | Efn LIdent
 --  | Efnp LIdent [Exp]
---  | Evar [LIdent]
+
+evalExpr (Evar (i:is)) = do
+	ret <- getVal i
+	case ret of
+		(Tint, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tbool, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tarr typ, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+-- 		(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 
 evalExpr (Econ c) = do
 	case c of

@@ -75,12 +75,20 @@ Decl :: { Decl }
 Decl : 'func' Type LIdent '(' ListPDecl ')' 'NEWLINE' StmtB { Dfun $2 $3 $5 $8 } 
   | 'func' LIdent '(' ListPDecl ')' 'NEWLINE' StmtB { Dproc $2 $4 $7 }
   | 'def' RecName 'NEWLINE' 'INDENT' ListVDecl 'DEDENT' { Drec $2 $5 }
-  | StmtB { Dstmt $1 }
+  | StmtLine { Dstmt $1 }
+
+
+ListDecl :: { [Decl] }
+ListDecl : Decl { (:[]) $1 } 
+  | Decl 'NEWLINE' ListDecl { (:) $1 $3 }
+
+
+StmtLine :: { StmtLine }
+StmtLine : StmtL { Sline $1 } 
 
 
 StmtB :: { StmtB }
-StmtB : StmtL 'NEWLINE' { Slist $1 } 
-  | 'INDENT' ListStmtL 'DEDENT' 'NEWLINE' { Sblock $2 }
+StmtB : 'INDENT' ListStmtL 'DEDENT' { Sblock $2 } 
 
 
 StmtL :: { StmtL }
@@ -98,8 +106,14 @@ Stmt : 'if' Exp 'then' StmtB { Sif $2 $4 }
   | 'while' Exp 'do' StmtB { Swh $2 $4 }
   | 'for' LIdent 'in' Exp 'do' StmtB { Sfor $2 $4 $6 }
   | 'return' Exp { Sret $2 }
+  | Exp { Sfcll $1 }
   | LIdent '=' Exp { Sass $1 $3 }
   | SDecl { Sdecl $1 }
+
+
+ListStmt :: { [Stmt] }
+ListStmt : Stmt { (:[]) $1 } 
+  | Stmt ';' ListStmt { (:) $1 $3 }
 
 
 SDecl :: { SDecl }
@@ -124,16 +138,6 @@ ListPDecl : {- empty -} { [] }
 ListVDecl :: { [VDecl] }
 ListVDecl : VDecl { (:[]) $1 } 
   | VDecl 'NEWLINE' ListVDecl { (:) $1 $3 }
-
-
-ListStmt :: { [Stmt] }
-ListStmt : Stmt { (:[]) $1 } 
-  | Stmt ';' ListStmt { (:) $1 $3 }
-
-
-ListDecl :: { [Decl] }
-ListDecl : Decl { (:[]) $1 } 
-  | Decl 'NEWLINE' ListDecl { (:) $1 $3 }
 
 
 Exp :: { Exp }

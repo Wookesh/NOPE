@@ -37,8 +37,8 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrV v $ show ts
                           putStrLn s
            Ok  tree -> do putStrLn "\nParse Successful!"
-                          putStrLn $ show $ evalProgram tree
---                           showTree v tree
+                          putStrLn $ "\n[End State]" ++ (show (evalProgram tree)) ++ "\n\n"
+                          showTree v tree
 
 
 

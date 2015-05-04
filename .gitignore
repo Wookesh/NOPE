@@ -1,3 +1,5 @@
 *.hi
 *.bak
 *.o
+Docgram.*
+gram.txt

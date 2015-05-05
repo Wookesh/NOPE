@@ -9,13 +9,16 @@ data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [(Type, Value)] |
 
 type Loc = Int 
 
-data Obj = Fun StmtB | Var Loc deriving (Eq,Ord,Show)
+data Obj = Fun Type [Type] StmtB | Var Loc deriving (Eq,Ord,Show)
 
 type Env = M.Map LIdent Obj 
 
 type Store = (M.Map Loc (Type, Value), Loc)
 
+type TypeMap = M.Map LIdent Type
+
 data PState = PS (Env, Store) deriving (Eq,Ord,Show)
+data TStore = TS (TypeMap, TypeMap) deriving (Eq,Ord,Show)
 
 clearEnv :: Env
 clearEnv = M.empty
@@ -23,8 +26,14 @@ clearEnv = M.empty
 clearStore :: Store
 clearStore = (M.empty, 0)
 
+clearTMap :: TypeMap
+clearTMap = M.empty
+
 initialState :: PState
 initialState = PS (clearEnv, clearStore)
+
+initialTState :: TStore
+initialTState = TS (clearTMap, clearTMap)
 
 -------------------------------------
 -- Environment and Store functions --
@@ -37,7 +46,7 @@ addVar lident loc = do
 getLoc lident = do
 	PS (env, s) <- get
 	case M.lookup lident env of
-		Just (Fun _) -> fail "Expectec variable, not function name"
+		Just (Fun _ _ _) -> fail "Expectec variable, not function name"
 		Just (Var l) -> return $ l
 		Nothing -> fail $ "Undefined variable" ++ (show lident) ++ ".\n"
 
@@ -63,6 +72,19 @@ assign val loc = do
 		Nothing -> fail "Location unalloced"
 
 
+allocType typ lident = do
+	TS (e, store) <- get
+	put $ TS (e, M.insert lident typ store)
+
+getVarType lident = do
+	TS (_, store) <- get
+	case M.lookup lident store of
+		(Just typ) -> return typ
+		Nothing -> fail "Location unalloced"
+
+------------------
+-- Type Control --
+------------------
 
 defaultValue Tint = I 0
 defaultValue Tbool = B False
@@ -94,45 +116,69 @@ typeMissmatchS t typ = "Could not match type (" ++ (show t) ++ ") with " ++ (sho
 
 
 -------------
--- PROGRAM --
+-- Program --
 -------------
 
 evalProgram p = runState (evalProg p) initialState
 
+checkProgram p = evalState (checkProg p) initialTState
+
 evalProg (Prog decls) = do
-	val <- foldM evalDecl None $ decls
+	val <- foldM evalDecl None decls
 	return val
 
+
+checkProg (Prog decls) = do
+	val <- foldM checkDecl Tvoid decls
+	return $ val == Tint || val == Tvoid
+
 ------------------
--- DECLARATIONS --
+-- Declarations --
 ------------------
 
 evalDecl val (Dstmt stmtL) = do
 	val <- evalStmtLine val stmtL
 	return val
 
--- evalDecl (env, store) (Dfun type_ ident pDecl stmtB) = return $ error "pepe"
--- evalDecl (env, store) (Dproc ident pDecl stmtB) = return $ error "pepe"
--- evalDecl (env, store) (Drec recName vDecl) = return $ error "pepe"
+
+checkDecl val (Dstmt stmtL) = do
+	val <- checkStmtLine val stmtL
+	return val
 
 ---------------------------------
--- STATEMENTS BLOCKS AND LISTS --
+-- Statements Blocks and Lists --
 ---------------------------------
+
+-- Eval
 
 evalStmtLine val (Sline stmtL) = do
 	val <- evalStmtL val stmtL
 	return val
 
 evalStmtB val (Sblock stmtL) = do
-	val <- foldM evalStmtL val $ stmtL
+	val <- foldM evalStmtL val stmtL
 	return val
 
 evalStmtL val (Slst stmts) = do
-	val <- foldM evalStmt val $ stmts
+	val <- foldM evalStmt val stmts
+	return val
+
+-- Check Types
+
+checkStmtLine val (Sline stmtL) = do
+	val <- checkStmtL val stmtL
+	return val
+
+checkStmtB val (Sblock stmtL) = do
+	val <- foldM checkStmtL val stmtL
+	return val
+
+checkStmtL val (Slst stmts) = do
+	val <- foldM checkStmt val stmts
 	return val
 
 ----------------
--- STATEMENTS --
+-- Statements --
 ----------------
 
 -- if expr then stmt
@@ -201,8 +247,65 @@ evalStmt None (Sdecl sDecl) = do
 evalStmt val _ = return val
 
 
+-- check types in statements
+
+checkStmt Tvoid (Sif expr stmtB) = do
+	t <- checkExpr expr
+	if (t == Tbool) then do
+		val <- checkStmtB Tvoid stmtB
+		return val
+	else
+		fail $ typeMissmatchS t Tbool
+
+checkStmt Tvoid (Sife expr stmtB1 stmtB2) = do
+	t <- checkExpr expr
+	if (t == Tbool) then do
+		val <- checkStmtB Tvoid stmtB1
+		val <- checkStmtB val stmtB2
+		return val 
+	else
+		fail $ typeMissmatchS t Tbool
+
+checkStmt Tvoid (Swh expr stmtB) = do
+	t <- checkExpr expr
+	if (t == Tbool) then do
+		val <- checkStmtB Tvoid stmtB
+		return val
+	else
+		fail $ typeMissmatchS t Tbool
+
+--  | Sfor LIdent Exp StmtB
+checkStmt Tvoid (Sfor lident expr stmtB) = do
+	-- TODO check ident
+	t <- checkExpr expr
+	val <- checkStmtB Tvoid stmtB
+	return Tvoid
+
+checkStmt Tvoid (Sret expr) = do
+	t <- checkExpr expr
+	return t
+
+checkStmt Tvoid (Sfcll expr) = do
+	t <- checkExpr expr
+	return Tvoid
+
+checkStmt Tvoid (Sass lident expr) = do
+	t <- checkExpr expr
+	locType <- getVarType lident
+	if t == locType then 
+		fail $ typeMissmatchS t locType
+	else
+		return Tvoid
+
+checkStmt Tvoid (Sdecl sDecl) = do
+	checkSDecl sDecl
+	return Tvoid
+
+
+checkStmt val _ = do return val
+
 ---------------------------
--- VARAIBLE DECLARATIONS --
+-- Variable Declarations --
 ---------------------------
 
 evalSDecl (Svar vDecl) = do
@@ -220,11 +323,32 @@ evalVDecl (VDcl typ lident) = do
 	addVar lident loc
 	return loc
 
-----------------
--- EXPRESIONS --
-----------------
 
---    Edarr [Exp]
+
+checkSDecl (Svar vDecl) = do
+	checkVDecl vDecl
+	return Tvoid
+
+checkSDecl (Svas vDecl expr) = do
+	t <- checkExpr expr
+	lident <- checkVDecl vDecl
+	locType <- getVarType lident
+	if t == locType then
+		fail $ typeMissmatchS t locType
+	else
+		return Tvoid
+
+checkVDecl (VDcl typ lident) = do
+	allocType typ lident
+	return lident
+
+-----------------
+-- Expressions --
+-----------------
+
+-- evalExpr (Edarr exprs) = do
+-- 	array <- foldr  exprs
+
 evalExpr (Eor e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
@@ -354,3 +478,134 @@ evalExpr (Econ c) = do
 		Efalse -> return $ B False
 		Etrue -> return $ B True
 		Eint i -> return $ I i
+
+
+-- Check Expresion Type
+
+checkExpr (Eor e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tbool && t2 == Tbool) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tbool
+
+checkExpr (Eand e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tbool && t2 == Tbool) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tbool
+
+checkExpr (Eeq e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Edif e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Egt e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Egte e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Elt e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Elte e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tbool
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Eadd e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tint
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Esub e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tint
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Emul e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tint
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Ediv e1 e2) = do
+	t1 <- checkExpr e1
+	t2 <- checkExpr e2
+	if (t1 == Tint && t2 == Tint) then
+		return Tint
+	else
+		fail $ typeMissmatch t1 t2 Tint
+
+checkExpr (Eneg e) = do
+	t <- checkExpr e
+	if (t == Tbool) then
+		return Tbool
+	else
+		fail $ typeMissmatchS t Tbool
+
+checkExpr (Emin e) = do
+	t <- checkExpr e
+	if (t == Tint) then
+		return Tint
+	else
+		fail $ typeMissmatchS t Tint
+
+--  | Earr Exp Exp
+--  | Efn LIdent
+--  | Efnp LIdent [Exp]
+
+checkExpr (Evar (i:is)) = do
+	typ <- getVarType i
+	case typ of
+		(Tint) -> if (is == []) then (return Tint) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tbool) -> if (is == []) then (return Tbool) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tarr typ1) -> if (is == []) then (return $ Tarr typ) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+-- 		(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+
+checkExpr (Econ c) = do
+	case c of
+		Efalse -> return $ Tbool
+		Etrue -> return $ Tbool
+		Eint i -> return $ Tint

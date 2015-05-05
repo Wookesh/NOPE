@@ -86,5 +86,6 @@ data Type =
  | Tbool
  | Trec RecName
  | Tarr Type
+ | Tvoid
   deriving (Eq,Ord,Show)
 

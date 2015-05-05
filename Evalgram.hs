@@ -133,6 +133,13 @@ typeMissmatch t1 t2 type_ = "Could not match type (" ++ (show t1) ++ ") or (" ++
 typeMissmatch_ t1 t2 = "Could not match type (" ++ (show t1) ++ ") and (" ++ (show t2) ++ ").\n"
 typeMissmatchS t typ = "Could not match type (" ++ (show t) ++ ") with " ++ (show typ) ++ ".\n"
 
+loseTypeFromExpr typ = do
+	case typ of
+		Tint -> return Tvoid
+		Tbool -> return Tvoid
+		(Tarr _) -> return Tvoid
+		(Trec _) -> return Tvoid
+		_ -> return typ
 
 -------------
 -- Program --
@@ -326,7 +333,8 @@ checkStmt Tvoid (Swh expr stmtB) = do
 checkStmt Tvoid (Sfor lident expr stmtB) = do
 	-- TODO check ident
 	t <- checkExpr expr
-	val <- checkStmtB Tvoid stmtB
+	t <- loseTypeFromExpr t
+	val <- checkStmtB t stmtB
 	return val
 
 checkStmt Tvoid (Sret expr) = do
@@ -335,12 +343,8 @@ checkStmt Tvoid (Sret expr) = do
 
 checkStmt Tvoid (Sfcll expr) = do
 	t <- checkExpr expr
-	case t of
-		Tint -> return Tvoid
-		Tbool -> return Tvoid
-		(Tarr _) -> return Tvoid
-		(Trec _) -> return Tvoid
-		_ -> return t
+	t <- loseTypeFromExpr t
+	return t
 
 checkStmt Tvoid (Sass lident expr) = do
 	t <- checkExpr expr

@@ -53,8 +53,7 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrV v "Tokens:"
                           putStrV v $ show ts
                           putStrLn s
-           Ok  tree -> do putStrLn "\nParse Successful!"
-                          (ans, tstore) <- checkProgram tree
+           Ok  tree -> do (ans, tstore) <- checkProgram tree
                           if ans then
                             putStrLn $ "\n[End State]\n\n" ++ (show $ evalProgram tree)
                           else

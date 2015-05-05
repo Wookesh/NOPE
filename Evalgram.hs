@@ -16,9 +16,10 @@ type Env = M.Map LIdent Obj
 type Store = (M.Map Loc (Type, Value), Loc)
 
 type TypeMap = M.Map LIdent Type
+type FTypeMap = M.Map LIdent (Type, [Type])
 
 data PState = PS (Env, Store) deriving (Eq,Ord,Show)
-data TStore = TS (TypeMap, TypeMap) deriving (Eq,Ord,Show)
+data TStore = TS (FTypeMap, TypeMap) deriving (Eq,Ord,Show)
 
 clearEnv :: Env
 clearEnv = M.empty
@@ -29,11 +30,14 @@ clearStore = (M.empty, 0)
 clearTMap :: TypeMap
 clearTMap = M.empty
 
+clearFTMap :: FTypeMap
+clearFTMap = M.empty
+
 initialState :: PState
 initialState = PS (clearEnv, clearStore)
 
 initialTState :: TStore
-initialTState = TS (clearTMap, clearTMap)
+initialTState = TS (clearFTMap, clearTMap)
 
 -------------------------------------
 -- Environment and Store functions --
@@ -82,6 +86,21 @@ getVarType lident = do
 		(Just typ) -> return typ
 		Nothing -> fail "Location unalloced"
 
+registerFunc typ pTypes lident = do
+	TS (fstore, s) <- get
+	put $ TS (M.insert lident (typ, pTypes) fstore, s)
+
+getFunType lident = do
+	TS (fstore, _) <- get
+	case M.lookup lident fstore of
+		(Just (typ, _)) -> return typ
+		Nothing -> fail "Location unalloced"
+
+getFunParamsTypes lident = do
+	TS (fstore, _) <- get
+	case M.lookup lident fstore of
+		(Just (_, types)) -> return types
+		Nothing -> fail "Location unalloced"
 ------------------
 -- Type Control --
 ------------------
@@ -121,7 +140,7 @@ typeMissmatchS t typ = "Could not match type (" ++ (show t) ++ ") with " ++ (sho
 
 evalProgram p = runState (evalProg p) initialState
 
-checkProgram p = evalState (checkProg p) initialTState
+checkProgram p = return $ runState (checkProg p) initialTState
 
 evalProg (Prog decls) = do
 	val <- foldM evalDecl None decls
@@ -141,9 +160,38 @@ evalDecl val (Dstmt stmtL) = do
 	return val
 
 
+
 checkDecl val (Dstmt stmtL) = do
 	val <- checkStmtLine val stmtL
 	return val
+
+checkDecl val (Dfun typ lIdent pDecls stmtB) = do
+	pTypes <- foldM (\l s -> return $ l ++ (checkPDecl s)) [] pDecls
+	registerFunc typ pTypes lIdent
+	val <- checkStmtB Tvoid stmtB
+	if val == typ then
+		return Tvoid
+	else
+		fail $ typeMissmatchS val typ
+
+checkDecl val (Dproc lIdent pDecls stmtB) = do
+	pTypes <- foldM (\l s -> return $ l ++ (checkPDecl s)) [] pDecls
+	registerFunc Tvoid pTypes lIdent
+	val <- checkStmtB Tvoid stmtB
+	return val
+
+-- checkDecl val (Drec recName vDecls) = do
+-- 	return Tvoid
+
+
+----------------------------
+-- Parameter Declarations --
+----------------------------
+
+checkPDecl (PDcl vDecl) = do
+	t <- checkVDeclF vDecl
+	return t
+
 
 ---------------------------------
 -- Statements Blocks and Lists --
@@ -293,16 +341,15 @@ checkStmt Tvoid (Sass lident expr) = do
 	t <- checkExpr expr
 	locType <- getVarType lident
 	if t == locType then 
-		fail $ typeMissmatchS t locType
-	else
 		return Tvoid
+	else
+		fail $ typeMissmatchS t locType
 
 checkStmt Tvoid (Sdecl sDecl) = do
-	checkSDecl sDecl
-	return Tvoid
+	val <- checkSDecl sDecl
+	return val
 
-
-checkStmt val _ = do return val
+checkStmt val _ = return val
 
 ---------------------------
 -- Variable Declarations --
@@ -334,13 +381,16 @@ checkSDecl (Svas vDecl expr) = do
 	lident <- checkVDecl vDecl
 	locType <- getVarType lident
 	if t == locType then
-		fail $ typeMissmatchS t locType
-	else
 		return Tvoid
+	else
+		fail $ typeMissmatchS t locType
 
 checkVDecl (VDcl typ lident) = do
 	allocType typ lident
 	return lident
+
+checkVDeclF (VDcl typ lident) = do
+	return typ
 
 -----------------
 -- Expressions --
@@ -593,7 +643,10 @@ checkExpr (Emin e) = do
 		fail $ typeMissmatchS t Tint
 
 --  | Earr Exp Exp
---  | Efn LIdent
+checkExpr (Efn lIdent) = do
+	t <- getFunType lIdent
+	return t
+
 --  | Efnp LIdent [Exp]
 
 checkExpr (Evar (i:is)) = do

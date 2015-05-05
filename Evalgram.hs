@@ -327,7 +327,7 @@ checkStmt Tvoid (Sfor lident expr stmtB) = do
 	-- TODO check ident
 	t <- checkExpr expr
 	val <- checkStmtB Tvoid stmtB
-	return Tvoid
+	return val
 
 checkStmt Tvoid (Sret expr) = do
 	t <- checkExpr expr
@@ -335,7 +335,12 @@ checkStmt Tvoid (Sret expr) = do
 
 checkStmt Tvoid (Sfcll expr) = do
 	t <- checkExpr expr
-	return Tvoid
+	case t of
+		Tint -> return Tvoid
+		Tbool -> return Tvoid
+		(Tarr _) -> return Tvoid
+		(Trec _) -> return Tvoid
+		_ -> return t
 
 checkStmt Tvoid (Sass lident expr) = do
 	t <- checkExpr expr
@@ -647,7 +652,15 @@ checkExpr (Efn lIdent) = do
 	t <- getFunType lIdent
 	return t
 
---  | Efnp LIdent [Exp]
+checkExpr (Efnp lIdent exprs) = do
+	t <- getFunType lIdent
+	pFunTypes <- getFunParamsTypes lIdent
+	if length(pFunTypes) /= length(exprs) then
+		fail $ "wrong number of parameters"
+	else do 
+		let s = zipWith (\a b -> (a, b)) pFunTypes exprs
+		val <- foldM checkParameterType Tvoid s
+		return val
 
 checkExpr (Evar (i:is)) = do
 	typ <- getVarType i
@@ -662,3 +675,12 @@ checkExpr (Econ c) = do
 		Efalse -> return $ Tbool
 		Etrue -> return $ Tbool
 		Eint i -> return $ Tint
+
+checkParameterType Tvoid (typ, expr) = do
+	t <- checkExpr expr
+	if typ == t then
+		return Tvoid
+	else
+		fail "Failed types in function parameters"
+
+checkParameterType val _ = return val

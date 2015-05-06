@@ -13,6 +13,7 @@ import Skelgram
 import Printgram
 import Absgram
 import Evalgram
+import Preprocess
 
 
 
@@ -24,23 +25,6 @@ myLLexer = myLexer
 
 type Verbosity = Int
 
-
--- preprocessLine :: (String, Integer) -> Integer -> (String, Integer)
--- preprocessLine (s, prevIndent) currIndent | currIndent == prevIndent = (s, prevIndent)
--- 														| currIndent == prevIndent + 1 = ("INDENT " ++ s. currIndent)
--- 														| currIndent < prevIndent = ()
--- 
--- 
--- removeIndent :: String -> String
--- removeIndent [] = []
--- removeIndent (x:xs) | x == '\t' = removeIndent xs
--- 						  | otherwise = x:xs
--- 
--- countIndent :: String -> Integer
--- countIndent [] = 0
--- countIndent (x:xs) | x == '\t' = (countIndent xs) + 1
--- 						 | otherwise = 0
-
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = if v > 1 then putStrLn s else return ()
 
@@ -48,11 +32,12 @@ runFile :: (Print Program, Show Program) => Verbosity -> ParseFun Program -> Fil
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
 run :: (Print Program, Show Program) => Verbosity -> ParseFun Program -> String -> IO ()
-run v p s = let ts = myLLexer s in case p ts of
-           Bad s    -> do putStrLn "\nParse              Failed...\n"
+run v p s = let ts = myLLexer (preprocessInput s) in case p ts of
+           Bad z    -> do putStrLn "\nParse              Failed...\n"
                           putStrV v "Tokens:"
                           putStrV v $ show ts
-                          putStrLn s
+                          putStrLn $ show (preprocessInput s)
+                          putStrLn z
            Ok  tree -> do (ans, tstore) <- checkProgram tree
                           if ans then
                             putStrLn $ "\n[End State]\n\n" ++ (show $ evalProgram tree)

@@ -39,11 +39,11 @@ import ErrM
  'INDENT' { PT _ (TS _ 22) }
  'Int' { PT _ (TS _ 23) }
  'NEWLINE' { PT _ (TS _ 24) }
- '[' { PT _ (TS _ 25) }
- ']' { PT _ (TS _ 26) }
- 'def' { PT _ (TS _ 27) }
- 'do' { PT _ (TS _ 28) }
- 'else' { PT _ (TS _ 29) }
+ 'NEWLINE else' { PT _ (TS _ 25) }
+ '[' { PT _ (TS _ 26) }
+ ']' { PT _ (TS _ 27) }
+ 'def' { PT _ (TS _ 28) }
+ 'do' { PT _ (TS _ 29) }
  'false' { PT _ (TS _ 30) }
  'for' { PT _ (TS _ 31) }
  'func' { PT _ (TS _ 32) }
@@ -72,8 +72,8 @@ Program : ListDecl { Prog $1 }
 
 
 Decl :: { Decl }
-Decl : 'func' Type LIdent '(' ListPDecl ')' 'NEWLINE' StmtB { Dfun $2 $3 $5 $8 } 
-  | 'func' LIdent '(' ListPDecl ')' 'NEWLINE' StmtB { Dproc $2 $4 $7 }
+Decl : 'func' Type LIdent '(' ListPDecl ')' StmtB { Dfun $2 $3 $5 $7 } 
+  | 'func' LIdent '(' ListPDecl ')' StmtB { Dproc $2 $4 $6 }
   | 'def' RecName 'NEWLINE' 'INDENT' ListVDecl 'DEDENT' { Drec $2 $5 }
   | StmtLine { Dstmt $1 }
 
@@ -88,7 +88,7 @@ StmtLine : StmtL { Sline $1 }
 
 
 StmtB :: { StmtB }
-StmtB : 'INDENT' ListStmtL 'DEDENT' { Sblock $2 } 
+StmtB : 'NEWLINE' 'INDENT' ListStmtL 'DEDENT' { Sblock $3 } 
 
 
 StmtL :: { StmtL }
@@ -102,7 +102,7 @@ ListStmtL : StmtL { (:[]) $1 }
 
 Stmt :: { Stmt }
 Stmt : 'if' Exp 'then' StmtB { Sif $2 $4 } 
-  | 'if' Exp 'then' StmtB 'else' StmtB { Sife $2 $4 $6 }
+  | 'if' Exp 'then' StmtB 'NEWLINE else' StmtB { Sife $2 $4 $6 }
   | 'while' Exp 'do' StmtB { Swh $2 $4 }
   | 'for' LIdent 'in' Exp 'do' StmtB { Sfor $2 $4 $6 }
   | 'return' Exp { Sret $2 }

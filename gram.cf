@@ -2,8 +2,8 @@ entrypoints Program;
 
 Prog.		Program ::= [ Decl ];
 
-Dfun.		Decl ::= "func" Type LIdent "(" [PDecl] ")" "NEWLINE" StmtB;
-Dproc.	Decl ::= "func" LIdent "(" [PDecl] ")" "NEWLINE" StmtB;
+Dfun.		Decl ::= "func" Type LIdent "(" [PDecl] ")"  StmtB;
+Dproc.	Decl ::= "func" LIdent "(" [PDecl] ")" StmtB;
 Drec.		Decl ::= "def" RecName "NEWLINE" "INDENT" [ VDecl ] "DEDENT";
 Dstmt.	Decl ::= StmtLine;
 
@@ -11,14 +11,14 @@ separator nonempty Decl "NEWLINE";
 
 Sline.	StmtLine ::= StmtL;
 
-Sblock.	StmtB ::= "INDENT" [StmtL] "DEDENT";
+Sblock.	StmtB ::= "NEWLINE" "INDENT" [StmtL] "DEDENT";
 
 Slst.		StmtL ::= [Stmt];
 
 separator nonempty StmtL "NEWLINE";
 
 Sif.		Stmt ::= "if" Exp "then" StmtB;
-Sife.		Stmt ::= "if" Exp "then" StmtB "else" StmtB;
+Sife.		Stmt ::= "if" Exp "then" StmtB "NEWLINE else" StmtB;
 Swh.		Stmt ::= "while" Exp "do" StmtB;
 Sfor.		Stmt ::= "for" LIdent "in" Exp "do" StmtB;
 Sret.		Stmt ::= "return" Exp;

@@ -31,17 +31,17 @@ The set of reserved words is the set of terminals appearing in the grammar. Thos
 The reserved words used in gram are the following:
   | ``Array`` | ``Bool`` | ``DEDENT`` | ``INDENT``
   | ``Int`` | ``NEWLINE`` | ``def`` | ``do``
-  | ``else`` | ``false`` | ``for`` | ``func``
-  | ``if`` | ``in`` | ``return`` | ``then``
-  | ``true`` | ``while`` |  | 
+  | ``false`` | ``for`` | ``func`` | ``if``
+  | ``in`` | ``return`` | ``then`` | ``true``
+  | ``while`` |  |  | 
 
 The symbols used in gram are the following:
-  | ( | ) | = | ;
-  | , | [ | ] | ||
-  | && | == | != | >
-  | >= | < | <= | +
-  | - | * | / | !
-  | . |  |  | 
+  | ( | ) | NEWLINE else | =
+  | ; | , | [ | ]
+  | || | && | == | !=
+  | > | >= | < | <=
+  | + | - | * | /
+  | ! | . |  | 
 
 ===Comments===
 Single-line comments begin with //.There are no multiple-line comments in the grammar.
@@ -53,19 +53,19 @@ and **eps** (empty rule) belong to the BNF notation.
 All other symbols are terminals.
 
   | //Program// | -> | //[Decl]// 
-  | //Decl// | -> | ``func`` //Type// //LIdent// ``(`` //[PDecl]// ``)`` ``NEWLINE`` //StmtB// 
-  |  |  **|**  | ``func`` //LIdent// ``(`` //[PDecl]// ``)`` ``NEWLINE`` //StmtB// 
+  | //Decl// | -> | ``func`` //Type// //LIdent// ``(`` //[PDecl]// ``)`` //StmtB// 
+  |  |  **|**  | ``func`` //LIdent// ``(`` //[PDecl]// ``)`` //StmtB// 
   |  |  **|**  | ``def`` //RecName// ``NEWLINE`` ``INDENT`` //[VDecl]// ``DEDENT`` 
   |  |  **|**  | //StmtLine// 
   | //[Decl]// | -> | //Decl// 
   |  |  **|**  | //Decl// ``NEWLINE`` //[Decl]// 
   | //StmtLine// | -> | //StmtL// 
-  | //StmtB// | -> | ``INDENT`` //[StmtL]// ``DEDENT`` 
+  | //StmtB// | -> | ``NEWLINE`` ``INDENT`` //[StmtL]// ``DEDENT`` 
   | //StmtL// | -> | //[Stmt]// 
   | //[StmtL]// | -> | //StmtL// 
   |  |  **|**  | //StmtL// ``NEWLINE`` //[StmtL]// 
   | //Stmt// | -> | ``if`` //Exp// ``then`` //StmtB// 
-  |  |  **|**  | ``if`` //Exp// ``then`` //StmtB// ``else`` //StmtB// 
+  |  |  **|**  | ``if`` //Exp// ``then`` //StmtB// ``NEWLINE else`` //StmtB// 
   |  |  **|**  | ``while`` //Exp// ``do`` //StmtB// 
   |  |  **|**  | ``for`` //LIdent// ``in`` //Exp// ``do`` //StmtB// 
   |  |  **|**  | ``return`` //Exp// 

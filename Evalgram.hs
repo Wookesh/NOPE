@@ -13,16 +13,26 @@ data Obj = Fun Type [Type] StmtB | Var Loc deriving (Eq,Ord,Show)
 
 type Env = M.Map LIdent Obj 
 
+type VEnv = M.Map LIdent Loc
+type FEnv = M.Map LIdent ([PDecl], StmtB)
+
 type Store = (M.Map Loc (Type, Value), Loc)
 
 type TypeMap = M.Map LIdent Type
 type FTypeMap = M.Map LIdent (Type, [Type])
 
 data PState = PS (Env, Store) deriving (Eq,Ord,Show)
+data NStore = NS (FEnv, VEnv, Store) deriving (Eq, Ord, Show)
 data TStore = TS (FTypeMap, TypeMap) deriving (Eq,Ord,Show)
 
 clearEnv :: Env
 clearEnv = M.empty
+
+clearFEnv :: FEnv
+clearFEnv = M.empty
+
+clearVEnv :: VEnv
+clearVEnv = M.empty
 
 clearStore :: Store
 clearStore = (M.empty, 0)
@@ -39,41 +49,69 @@ initialState = PS (clearEnv, clearStore)
 initialTState :: TStore
 initialTState = TS (clearFTMap, clearTMap)
 
+initialNStore :: NStore
+initialNStore = NS (clearFEnv, clearVEnv, clearStore)
+
 -------------------------------------
 -- Environment and Store functions --
 -------------------------------------
 
 addVar lident loc = do
-	PS (env, s) <- get
-	put $ PS (M.insert lident (Var loc) env, s)
+	NS (f, venv, s) <- get
+	put $ NS (f, M.insert lident loc venv, s)
+
+addFun lident typ params stmt = do
+	NS (fenv, v, s) <- get
+	put $ NS (M.insert lident (params, stmt) fenv, v, s)
 
 getLoc lident = do
-	PS (env, s) <- get
-	case M.lookup lident env of
-		Just (Fun _ _ _) -> fail "Expectec variable, not function name"
-		Just (Var l) -> return $ l
+	NS (f, venv, s) <- get
+	case M.lookup lident venv of
+		Just l -> return $ l
 		Nothing -> fail $ "Undefined variable" ++ (show lident) ++ ".\n"
 
 getVal lident = do
 	loc <- getLoc lident
-	PS (_, (store, _)) <- get
+	NS (_, _, (store, _)) <- get
 	case M.lookup loc store of 
 		(Just val) -> return val
-		Nothing -> fail "Location unalloced"
+		Nothing -> fail "Location unalloced."
+
+getFun lident = do
+	NS (fenv, _, _) <- get
+	case M.lookup lident fenv of
+		Just f -> return f
+		Nothing -> fail $ "Undefined function" ++ (show lident) ++ ".\n"
 
 alloc typ = do
-	PS (e, (m, loc)) <- get
-	put $ PS (e, (M.insert (loc + 1) (typ, defaultValue typ) m, loc + 1))
+	NS (f, v, (m, loc)) <- get
+	put $ NS (f, v, (M.insert (loc + 1) (typ, defaultValue typ) m, loc + 1))
 	return $ loc + 1
 
 assign val loc = do
-	PS (e, (store, l)) <- get
+	NS (f, v, (store, l)) <- get
 	case M.lookup loc store of
 		Just (typ, _) -> if (typeMatches typ val) then
-				put $ PS (e, (M.insert loc (typ, val) store, l))
+				put $ NS (f, v, (M.insert loc (typ, val) store, l))
 			else
 				fail $ "Expected " ++ (show typ) ++ ", got " ++ (show (toType val)) ++ ".\n"
 		Nothing -> fail "Location unalloced"
+
+
+local fun = do
+	NS (fenv, venv, store) <- get
+	t <- fun
+	NS (_, _, store') <- get
+	put $ NS (fenv, venv, store')
+	return t
+
+localClearVEnv fun  = do
+	NS (fenv, venv, store) <- get
+	put $ NS (fenv, clearVEnv, store)
+	t <- fun
+	NS (_, _, store') <- get
+	put $ NS (fenv, venv, store')
+	return t
 
 
 allocType typ lident = do
@@ -84,7 +122,7 @@ getVarType lident = do
 	TS (_, store) <- get
 	case M.lookup lident store of
 		(Just typ) -> return typ
-		Nothing -> fail "Location unalloced"
+		Nothing -> fail $ "Variable " ++ (show lident) ++ " undefined.\n"
 
 registerFunc typ pTypes lident = do
 	TS (fstore, s) <- get
@@ -94,13 +132,13 @@ getFunType lident = do
 	TS (fstore, _) <- get
 	case M.lookup lident fstore of
 		(Just (typ, _)) -> return typ
-		Nothing -> fail "Location unalloced"
+		Nothing -> fail $ "Function " ++ (show lident) ++ " undefined.\n"
 
 getFunParamsTypes lident = do
 	TS (fstore, _) <- get
 	case M.lookup lident fstore of
 		(Just (_, types)) -> return types
-		Nothing -> fail "Location unalloced"
+		Nothing -> fail $ "Function " ++ (show lident) ++ " undefined.\n"
 ------------------
 -- Type Control --
 ------------------
@@ -145,7 +183,7 @@ loseTypeFromExpr typ = do
 -- Program --
 -------------
 
-evalProgram p = runState (evalProg p) initialState
+evalProgram p = runState (evalProg p) initialNStore
 
 checkProgram p = return $ runState (checkProg p) initialTState
 
@@ -185,7 +223,10 @@ checkDecl val (Dproc lIdent pDecls stmtB) = do
 	pTypes <- foldM (\l s -> return $ l ++ (checkPDecl s)) [] pDecls
 	registerFunc Tvoid pTypes lIdent
 	val <- checkStmtB Tvoid stmtB
-	return val
+	if (val == Tvoid) then
+		return  val
+	else
+		fail $ "Untyped function " ++ (show lIdent) ++ "returned value.\n"
 
 -- checkDecl val (Drec recName vDecls) = do
 -- 	return Tvoid
@@ -471,8 +512,16 @@ evalExpr (Emin e) = do
 	return $ I (-(valueToInt v))
 
 --  | Earr Exp Exp
---  | Efn LIdent
---  | Efnp LIdent [Exp]
+evalExpr (Efn lIdent) = do
+	(_, stmtB) <- getFun lIdent
+	t <- local $ evalStmtB None stmtB
+	return t
+
+evalExpr (Efnp lIdent exprs) = do
+	(pDecls, stmtB) <- getFun lIdent
+	values <- foldM (\l e ->  return $ l ++ [evalExpr e]) [] exprs
+	t <- evalStmtB None stmtB
+	return t
 
 evalExpr (Evar (i:is)) = do
 	ret <- getVal i
@@ -488,6 +537,9 @@ evalExpr (Econ c) = do
 		Etrue -> return $ B True
 		Eint i -> return $ I i
 
+-- stackExprs l expr = do
+-- 	t <- evalExpr expr
+-- 	return $ l ++ t
 
 -- Check Expresion Type
 

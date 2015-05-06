@@ -98,8 +98,8 @@ instance Print Program where
 
 instance Print Decl where
   prt i e = case e of
-   Dfun type' lident pdecls stmtb -> prPrec i 0 (concatD [doc (showString "func") , prt 0 type' , prt 0 lident , doc (showString "(") , prt 0 pdecls , doc (showString ")") , doc (showString "NEWLINE") , prt 0 stmtb])
-   Dproc lident pdecls stmtb -> prPrec i 0 (concatD [doc (showString "func") , prt 0 lident , doc (showString "(") , prt 0 pdecls , doc (showString ")") , doc (showString "NEWLINE") , prt 0 stmtb])
+   Dfun type' lident pdecls stmtb -> prPrec i 0 (concatD [doc (showString "func") , prt 0 type' , prt 0 lident , doc (showString "(") , prt 0 pdecls , doc (showString ")") , prt 0 stmtb])
+   Dproc lident pdecls stmtb -> prPrec i 0 (concatD [doc (showString "func") , prt 0 lident , doc (showString "(") , prt 0 pdecls , doc (showString ")") , prt 0 stmtb])
    Drec recname vdecls -> prPrec i 0 (concatD [doc (showString "def") , prt 0 recname , doc (showString "NEWLINE") , doc (showString "INDENT") , prt 0 vdecls , doc (showString "DEDENT")])
    Dstmt stmtline -> prPrec i 0 (concatD [prt 0 stmtline])
 
@@ -114,7 +114,7 @@ instance Print StmtLine where
 
 instance Print StmtB where
   prt i e = case e of
-   Sblock stmtls -> prPrec i 0 (concatD [doc (showString "INDENT") , prt 0 stmtls , doc (showString "DEDENT")])
+   Sblock stmtls -> prPrec i 0 (concatD [doc (showString "NEWLINE") , doc (showString "INDENT") , prt 0 stmtls , doc (showString "DEDENT")])
 
 
 instance Print StmtL where
@@ -128,7 +128,7 @@ instance Print StmtL where
 instance Print Stmt where
   prt i e = case e of
    Sif exp stmtb -> prPrec i 0 (concatD [doc (showString "if") , prt 0 exp , doc (showString "then") , prt 0 stmtb])
-   Sife exp stmtb0 stmtb -> prPrec i 0 (concatD [doc (showString "if") , prt 0 exp , doc (showString "then") , prt 0 stmtb0 , doc (showString "else") , prt 0 stmtb])
+   Sife exp stmtb0 stmtb -> prPrec i 0 (concatD [doc (showString "if") , prt 0 exp , doc (showString "then") , prt 0 stmtb0 , doc (showString "NEWLINE else") , prt 0 stmtb])
    Swh exp stmtb -> prPrec i 0 (concatD [doc (showString "while") , prt 0 exp , doc (showString "do") , prt 0 stmtb])
    Sfor lident exp stmtb -> prPrec i 0 (concatD [doc (showString "for") , prt 0 lident , doc (showString "in") , prt 0 exp , doc (showString "do") , prt 0 stmtb])
    Sret exp -> prPrec i 0 (concatD [doc (showString "return") , prt 0 exp])

@@ -45,22 +45,23 @@ The reserved words used in gram are the following: \\
 \begin{tabular}{lll}
 {\reserved{Array}} &{\reserved{Bool}} &{\reserved{DEDENT}} \\
 {\reserved{INDENT}} &{\reserved{Int}} &{\reserved{NEWLINE}} \\
-{\reserved{def}} &{\reserved{do}} &{\reserved{else}} \\
-{\reserved{false}} &{\reserved{for}} &{\reserved{func}} \\
-{\reserved{if}} &{\reserved{in}} &{\reserved{return}} \\
-{\reserved{then}} &{\reserved{true}} &{\reserved{while}} \\
+{\reserved{def}} &{\reserved{do}} &{\reserved{false}} \\
+{\reserved{for}} &{\reserved{func}} &{\reserved{if}} \\
+{\reserved{in}} &{\reserved{return}} &{\reserved{then}} \\
+{\reserved{true}} &{\reserved{while}} & \\
 \end{tabular}\\
 
 The symbols used in gram are the following: \\
 
 \begin{tabular}{lll}
-{\symb{(}} &{\symb{)}} &{\symb{{$=$}}} \\
-{\symb{;}} &{\symb{,}} &{\symb{[}} \\
-{\symb{]}} &{\symb{{$|$}{$|$}}} &{\symb{\&\&}} \\
-{\symb{{$=$}{$=$}}} &{\symb{!{$=$}}} &{\symb{{$>$}}} \\
-{\symb{{$>$}{$=$}}} &{\symb{{$<$}}} &{\symb{{$<$}{$=$}}} \\
-{\symb{{$+$}}} &{\symb{{$-$}}} &{\symb{*}} \\
-{\symb{/}} &{\symb{!}} &{\symb{.}} \\
+{\symb{(}} &{\symb{)}} &{\symb{NEWLINE else}} \\
+{\symb{{$=$}}} &{\symb{;}} &{\symb{,}} \\
+{\symb{[}} &{\symb{]}} &{\symb{{$|$}{$|$}}} \\
+{\symb{\&\&}} &{\symb{{$=$}{$=$}}} &{\symb{!{$=$}}} \\
+{\symb{{$>$}}} &{\symb{{$>$}{$=$}}} &{\symb{{$<$}}} \\
+{\symb{{$<$}{$=$}}} &{\symb{{$+$}}} &{\symb{{$-$}}} \\
+{\symb{*}} &{\symb{/}} &{\symb{!}} \\
+{\symb{.}} & & \\
 \end{tabular}\\
 
 \subsection*{Comments}
@@ -77,8 +78,8 @@ All other symbols are terminals.\\
 \end{tabular}\\
 
 \begin{tabular}{lll}
-{\nonterminal{Decl}} & {\arrow}  &{\terminal{func}} {\nonterminal{Type}} {\nonterminal{LIdent}} {\terminal{(}} {\nonterminal{ListPDecl}} {\terminal{)}} {\terminal{NEWLINE}} {\nonterminal{StmtB}}  \\
- & {\delimit}  &{\terminal{func}} {\nonterminal{LIdent}} {\terminal{(}} {\nonterminal{ListPDecl}} {\terminal{)}} {\terminal{NEWLINE}} {\nonterminal{StmtB}}  \\
+{\nonterminal{Decl}} & {\arrow}  &{\terminal{func}} {\nonterminal{Type}} {\nonterminal{LIdent}} {\terminal{(}} {\nonterminal{ListPDecl}} {\terminal{)}} {\nonterminal{StmtB}}  \\
+ & {\delimit}  &{\terminal{func}} {\nonterminal{LIdent}} {\terminal{(}} {\nonterminal{ListPDecl}} {\terminal{)}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{def}} {\nonterminal{RecName}} {\terminal{NEWLINE}} {\terminal{INDENT}} {\nonterminal{ListVDecl}} {\terminal{DEDENT}}  \\
  & {\delimit}  &{\nonterminal{StmtLine}}  \\
 \end{tabular}\\
@@ -93,7 +94,7 @@ All other symbols are terminals.\\
 \end{tabular}\\
 
 \begin{tabular}{lll}
-{\nonterminal{StmtB}} & {\arrow}  &{\terminal{INDENT}} {\nonterminal{ListStmtL}} {\terminal{DEDENT}}  \\
+{\nonterminal{StmtB}} & {\arrow}  &{\terminal{NEWLINE}} {\terminal{INDENT}} {\nonterminal{ListStmtL}} {\terminal{DEDENT}}  \\
 \end{tabular}\\
 
 \begin{tabular}{lll}
@@ -107,7 +108,7 @@ All other symbols are terminals.\\
 
 \begin{tabular}{lll}
 {\nonterminal{Stmt}} & {\arrow}  &{\terminal{if}} {\nonterminal{Exp}} {\terminal{then}} {\nonterminal{StmtB}}  \\
- & {\delimit}  &{\terminal{if}} {\nonterminal{Exp}} {\terminal{then}} {\nonterminal{StmtB}} {\terminal{else}} {\nonterminal{StmtB}}  \\
+ & {\delimit}  &{\terminal{if}} {\nonterminal{Exp}} {\terminal{then}} {\nonterminal{StmtB}} {\terminal{NEWLINE else}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{while}} {\nonterminal{Exp}} {\terminal{do}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{for}} {\nonterminal{LIdent}} {\terminal{in}} {\nonterminal{Exp}} {\terminal{do}} {\nonterminal{StmtB}}  \\
  & {\delimit}  &{\terminal{return}} {\nonterminal{Exp}}  \\

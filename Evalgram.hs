@@ -5,7 +5,7 @@ import Data.Map as M
 import Control.Monad.State
 import Data.Maybe
 
-data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [(Type, Value)] | None deriving (Eq,Ord,Show)
+data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [M.Map LIdent Loc] | None deriving (Eq,Ord,Show)
 
 type Loc = Int 
 
@@ -634,7 +634,7 @@ checkExpr (Evar (i:is)) = do
 	case typ of
 		(Tint) -> if (is == []) then (return Tint) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tbool) -> if (is == []) then (return Tbool) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
-		(Tarr typ1) -> if (is == []) then (return $ Tarr typ) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tarr typ1) -> if (is == []) then (return $ Tarr typ1) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 -- 		(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 
 checkExpr (Econ c) = do

@@ -239,40 +239,31 @@ checkStmtL val (Slst stmts) = do
 -- if expr then stmt
 evalStmt None (Sif expr stmtB) = do
 	v <- evalExpr expr
-	if ((toType v) == Tbool) then
-		if (valueToBool v) then do
-			val <- evalStmtB None stmtB
-			return val 
-		else 
-			return None
-	else
-		fail $ typeMissmatchS v Tbool
+	if (valueToBool v) then do
+		val <- evalStmtB None stmtB
+		return val 
+	else 
+		return None
 
 -- if expr then stmt else stmt
 evalStmt None (Sife expr stmtB1 stmtB2) = do
 	v <- evalExpr expr
-	if ((toType v) == Tbool) then
-		if (valueToBool v) then do
-			val <- evalStmtB None stmtB1
-			return val 
-		else do
-			val <- evalStmtB None stmtB2
-			return val 
-	else
-		fail $ typeMissmatchS v Tbool
+	if (valueToBool v) then do
+		val <- evalStmtB None stmtB1
+		return val 
+	else do
+		val <- evalStmtB None stmtB2
+		return val 
 
 -- while expr stmt
 evalStmt None stmt@(Swh expr stmtB) = do
 	v <- evalExpr expr
-	if ((toType v) == Tbool) then
-		if (valueToBool v) then do
-			val <- evalStmtB None stmtB
-			val <- evalStmt val stmt
-			return val 
-		else 
-			return None
-	else
-		fail $ typeMissmatchS v Tbool
+	if (valueToBool v) then do
+		val <- evalStmtB None stmtB
+		val <- evalStmt val stmt
+		return val 
+	else 
+		return None
 
 --  | Sfor LIdent Exp StmtB
 
@@ -411,114 +402,73 @@ checkVDeclF (VDcl typ lident) = do
 evalExpr (Eor e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tbool) then
-		return $ B ((valueToBool v1) || (valueToBool v2))
-	else
-		fail $ typeMissmatch v1 v2 Tbool
+	return $ B ((valueToBool v1) || (valueToBool v2))
 
 evalExpr (Eand e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tbool) then
-		return $ B ((valueToBool v1) && (valueToBool v2))
-	else
-		fail $ typeMissmatch v1 v2 Tbool
+	return $ B ((valueToBool v1) && (valueToBool v2))
 
 evalExpr (Eeq e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType_ v1 v2) then
-		return $ B (v1 == v2)
-	else
-		fail $ typeMissmatch_ v1 v2
+	return $ B (v1 == v2)
 
 evalExpr (Edif e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType_ v1 v2) then
-		return $ B (v1 /= v2)
-	else
-		fail $ typeMissmatch_ v1 v2
+	return $ B (v1 /= v2)
 
 evalExpr (Egt e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tint) then
-		return $ B ((valueToInt v1) > (valueToInt v2))
-	else
-		fail $ typeMissmatch v1 v2 Tint
+	return $ B ((valueToInt v1) > (valueToInt v2))
 
 evalExpr (Egte e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tint) then
-		return $ B ((valueToInt v1) >= (valueToInt v2))
-	else
-		fail $ typeMissmatch v1 v2 Tint
+	return $ B ((valueToInt v1) >= (valueToInt v2))
 
 evalExpr (Elt e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tint) then
-		return $ B ((valueToInt v1) < (valueToInt v2))
-	else
-		fail $ typeMissmatch v1 v2 Tint
+	return $ B ((valueToInt v1) < (valueToInt v2))
 
 evalExpr (Elte e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tint) then
-		return $ B ((valueToInt v1) <= (valueToInt v2))
-	else
-		fail $ typeMissmatch v1 v2 Tint
+	return $ B ((valueToInt v1) <= (valueToInt v2))
 
 evalExpr (Eadd e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tint) then
-		return $ I ((valueToInt v1) + (valueToInt v2))
-	else
-		fail $ typeMissmatch v1 v2 Tint
+	return $ I ((valueToInt v1) + (valueToInt v2))
 
 evalExpr (Esub e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tint) then
-		return $ I ((valueToInt v1) - (valueToInt v2))
-	else
-		fail $ typeMissmatch v1 v2 Tint
+	return $ I ((valueToInt v1) - (valueToInt v2))
 
 evalExpr (Emul e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	if (checkType v1 v2 Tint) then
-		return $ I ((valueToInt v1) * (valueToInt v2))
-	else
-		fail $ typeMissmatch v1 v2 Tint
+	return $ I ((valueToInt v1) * (valueToInt v2))
 
 evalExpr (Ediv e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
 	if (valueToInt v2) == 0 then
 		fail $ (show e2) ++ "is equal 0. Can not divide\n"
-	else ( if (checkType v1 v2 Tint) then
-		return $ I ((valueToInt v1) `div` (valueToInt v2))
 	else
-		fail $ typeMissmatch v1 v2 Tint)
+		return $ I ((valueToInt v1) `div` (valueToInt v2))
 
 evalExpr (Eneg e) = do
 	v <- evalExpr e
-	if ((toType v) == Tbool) then
-		return $ B (not (valueToBool v))
-	else
-		fail $ typeMissmatchS v Tbool
+	return $ B (not (valueToBool v))
 
 evalExpr (Emin e) = do
 	v <- evalExpr e
-	if ((toType v) == Tint) then
-		return $ I (-(valueToInt v))
-	else
-		fail $ typeMissmatchS v Tint
+	return $ I (-(valueToInt v))
 
 --  | Earr Exp Exp
 --  | Efn LIdent
@@ -651,16 +601,29 @@ checkExpr (Emin e) = do
 	else
 		fail $ typeMissmatchS t Tint
 
---  | Earr Exp Exp
+checkExpr (Earr expr1 expr2) = do
+	t1 <- checkExpr expr1
+	t2 <- checkExpr expr2
+	if t2 == Tint then
+		case t1 of 
+			(Tarr typ) -> return typ
+			_ -> fail $ "Try to access non array by [] operator."
+	else
+		fail $ typeMissmatchS t1 Tint
+
 checkExpr (Efn lIdent) = do
 	t <- getFunType lIdent
-	return t
+	pFunTypes <- getFunParamsTypes lIdent
+	if ((length pFunTypes) /= 0) then
+		fail $ "Wrong number of parameters"
+	else
+		return t
 
 checkExpr (Efnp lIdent exprs) = do
 	t <- getFunType lIdent
 	pFunTypes <- getFunParamsTypes lIdent
 	if length(pFunTypes) /= length(exprs) then
-		fail $ "wrong number of parameters"
+		fail $ "Wrong number of parameters"
 	else do 
 		let s = zipWith (\a b -> (a, b)) pFunTypes exprs
 		val <- foldM checkParameterType Tvoid s

@@ -214,7 +214,9 @@ checkProgram p = return $ runState (checkProg p) initialTState
 
 evalProg (Prog decls) = do
 	val <- foldM evalDecl None decls
-	return val
+	case val of
+		None -> return 0
+		(I i) -> return i
 
 
 checkProg (Prog decls) = do

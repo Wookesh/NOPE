@@ -19,7 +19,7 @@ type FEnv = M.Map LIdent ([PDecl], StmtB)
 type Store = (M.Map Loc (Type, Value), Loc)
 
 type TypeMap = M.Map LIdent Type
-type FTypeMap = M.Map LIdent (Type, [Type])
+type FTypeMap = M.Map LIdent (Type, [(Type, LIdent)])
 
 data PState = PS (Env, Store) deriving (Eq,Ord,Show)
 data NStore = NS (FEnv, VEnv, Store) deriving (Eq, Ord, Show)
@@ -113,6 +113,30 @@ localClearVEnv fun  = do
 	put $ NS (fenv, venv, store')
 	return t
 
+localDecl pDecls values fun = do
+	NS (fenv, venv, store) <- get
+	let declWithVal = zip pDecls values
+	forM declWithVal evalPDeclVal 
+	t <- fun
+	NS (_, _, store') <- get
+	put $ NS (fenv, venv, store')
+	return t
+
+-- Type control stores
+
+localT fun = do
+	TS (env, store) <- get
+	t <- fun
+	put $ TS (env, store)
+	return t
+
+localTDecl pTypes fun = do
+	TS (env, store) <- get
+	forM pTypes (\(t, l) -> allocType t l)
+	t <- fun
+	put $ TS (env, store)
+	return t
+
 
 allocType typ lident = do
 	TS (e, store) <- get
@@ -139,6 +163,7 @@ getFunParamsTypes lident = do
 	case M.lookup lident fstore of
 		(Just (_, types)) -> return types
 		Nothing -> fail $ "Function " ++ (show lident) ++ " undefined.\n"
+
 ------------------
 -- Type Control --
 ------------------
@@ -204,6 +229,13 @@ evalDecl val (Dstmt stmtL) = do
 	val <- evalStmtLine val stmtL
 	return val
 
+evalDecl val (Dfun typ lIdent pDecls stmtB) = do
+	addFun lIdent typ pDecls stmtB
+	return None
+
+evalDecl val (Dproc lIdent pDecls stmtB) = do
+	addFun lIdent Tvoid pDecls stmtB
+	return None
 
 
 checkDecl val (Dstmt stmtL) = do
@@ -213,7 +245,7 @@ checkDecl val (Dstmt stmtL) = do
 checkDecl val (Dfun typ lIdent pDecls stmtB) = do
 	pTypes <- foldM (\l s -> return $ l ++ (checkPDecl s)) [] pDecls
 	registerFunc typ pTypes lIdent
-	val <- checkStmtB Tvoid stmtB
+	val <- localTDecl pTypes $ checkStmtB Tvoid stmtB
 	if val == typ then
 		return Tvoid
 	else
@@ -222,7 +254,7 @@ checkDecl val (Dfun typ lIdent pDecls stmtB) = do
 checkDecl val (Dproc lIdent pDecls stmtB) = do
 	pTypes <- foldM (\l s -> return $ l ++ (checkPDecl s)) [] pDecls
 	registerFunc Tvoid pTypes lIdent
-	val <- checkStmtB Tvoid stmtB
+	val <- localTDecl pTypes $ checkStmtB Tvoid stmtB
 	if (val == Tvoid) then
 		return  val
 	else
@@ -412,6 +444,11 @@ evalVDecl (VDcl typ lident) = do
 	return loc
 
 
+evalPDeclVal (PDcl vDecl, val) = do
+	loc <- evalVDecl vDecl
+	assign val loc
+	return ()
+
 
 checkSDecl (Svar vDecl) = do
 	checkVDecl vDecl
@@ -431,7 +468,7 @@ checkVDecl (VDcl typ lident) = do
 	return lident
 
 checkVDeclF (VDcl typ lident) = do
-	return typ
+	return (typ, lident)
 
 -----------------
 -- Expressions --
@@ -519,8 +556,8 @@ evalExpr (Efn lIdent) = do
 
 evalExpr (Efnp lIdent exprs) = do
 	(pDecls, stmtB) <- getFun lIdent
-	values <- foldM (\l e ->  return $ l ++ [evalExpr e]) [] exprs
-	t <- evalStmtB None stmtB
+	values <- foldM (\l e -> do { v <- evalExpr e; return $ l ++ [v] }) [] exprs
+	t <- localDecl pDecls values (evalStmtB None stmtB)
 	return t
 
 evalExpr (Evar (i:is)) = do
@@ -695,7 +732,7 @@ checkExpr (Econ c) = do
 		Etrue -> return $ Tbool
 		Eint i -> return $ Tint
 
-checkParameterType Tvoid (typ, expr) = do
+checkParameterType Tvoid ((typ, lident), expr) = do
 	t <- checkExpr expr
 	if typ == t then
 		return Tvoid

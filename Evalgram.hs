@@ -258,7 +258,7 @@ checkDecl val (Dproc lIdent pDecls stmtB) = do
 	registerFunc Tvoid pTypes lIdent
 	val <- localTDecl pTypes $ checkStmtB Tvoid stmtB
 	if (val == Tvoid) then
-		return  val
+		return val
 	else
 		fail $ "Untyped function " ++ (show lIdent) ++ "returned value.\n"
 
@@ -551,6 +551,7 @@ evalExpr (Emin e) = do
 	return $ I (-(valueToInt v))
 
 --  | Earr Exp Exp
+
 evalExpr (Efn lIdent) = do
 	(_, stmtB) <- getFun lIdent
 	t <- local $ evalStmtB None stmtB
@@ -718,7 +719,10 @@ checkExpr (Efnp lIdent exprs) = do
 	else do 
 		let s = zipWith (\a b -> (a, b)) pFunTypes exprs
 		val <- foldM checkParameterType Tvoid s
-		return val
+		if val == Tvoid then
+			return t
+		else
+			return val
 
 checkExpr (Evar (i:is)) = do
 	typ <- getVarType i

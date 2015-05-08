@@ -204,6 +204,12 @@ loseTypeFromExpr typ = do
 		(Trec _) -> return Tvoid
 		_ -> return typ
 
+allSame :: (Eq a) => [a] -> Bool
+allSame [] = True
+allSame (x:[]) = True
+allSame (x:xs) | x == (head xs) = allSame xs
+					| otherwise = False
+
 -------------
 -- Program --
 -------------
@@ -476,8 +482,12 @@ checkVDeclF (VDcl typ lident) = do
 -- Expressions --
 -----------------
 
--- evalExpr (Edarr exprs) = do
--- 	array <- foldr  exprs
+evalExpr (Edarr exprs) = do
+	values <- foldM (\l e -> do { v <- evalExpr e; return $ l ++ [v] }) [] exprs
+	if (length values) > 0 then 
+		return (Ar (toType (values !! 0)) values)
+	else
+		return $ I 1
 
 evalExpr (Eor e1 e2) = do
 	v1 <- evalExpr e1
@@ -550,7 +560,13 @@ evalExpr (Emin e) = do
 	v <- evalExpr e
 	return $ I (-(valueToInt v))
 
---  | Earr Exp Exp
+evalExpr (Earr exprI exprV) = do
+	(Ar t arr) <- evalExpr exprI
+	(I i) <- evalExpr exprV
+	if (length arr) <= (fromInteger i) || i < 0 then
+		fail $ "Index out of range"
+	else
+		return $ arr !! (fromInteger i)
 
 evalExpr (Efn lIdent) = do
 	(_, stmtB) <- getFun lIdent
@@ -577,11 +593,17 @@ evalExpr (Econ c) = do
 		Etrue -> return $ B True
 		Eint i -> return $ I i
 
--- stackExprs l expr = do
--- 	t <- evalExpr expr
--- 	return $ l ++ t
-
 -- Check Expresion Type
+
+checkExpr (Edarr exprs) = do
+	types <- foldM (\l e -> do { t <- checkExpr e; return $ l ++ [t] }) [] exprs
+	if (length types) > 0 then 
+		if allSame types then
+			return $ Tarr $ types !! 0
+		else
+			fail $ "One or more values in array (" ++ (show (Edarr exprs)) ++ ") have different types.\n"
+	else
+		return $ Tvoid
 
 checkExpr (Eor e1 e2) = do
 	t1 <- checkExpr e1

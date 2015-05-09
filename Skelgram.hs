@@ -113,6 +113,7 @@ transType x = case x of
   Tbool  -> failure x
   Trec recname  -> failure x
   Tarr type'  -> failure x
+  Tref type'  -> failure x
 
 
 

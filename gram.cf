@@ -80,6 +80,7 @@ Tint.		Type ::= "Int";
 Tbool.	Type ::= "Bool";
 Trec.		Type ::= RecName;
 Tarr.		Type ::= "Array" Type;
+Tref.		Type ::= "&" Type;
 
 separator nonempty Exp ",";
 

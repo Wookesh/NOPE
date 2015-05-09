@@ -204,6 +204,7 @@ instance Print Type where
    Tbool  -> prPrec i 0 (concatD [doc (showString "Bool")])
    Trec recname -> prPrec i 0 (concatD [prt 0 recname])
    Tarr type' -> prPrec i 0 (concatD [doc (showString "Array") , prt 0 type'])
+   Tref type' -> prPrec i 0 (concatD [doc (showString "&") , prt 0 type'])
 
 
 

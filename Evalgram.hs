@@ -10,10 +10,6 @@ data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [M.Map LIdent Loc
 
 type Loc = Int 
 
-data Obj = Fun Type [Type] StmtB | Var Loc deriving (Eq,Ord,Show)
-
-type Env = M.Map LIdent Obj 
-
 type VEnv = M.Map LIdent Loc
 type FEnv = M.Map LIdent ([PDecl], StmtB)
 
@@ -22,12 +18,9 @@ type Store = (M.Map Loc (Type, Value), Loc)
 type TypeMap = M.Map LIdent Type
 type FTypeMap = M.Map LIdent (Type, [(Type, LIdent)])
 
-data PState = PS (Env, Store) deriving (Eq,Ord,Show)
 data NStore = NS (FEnv, VEnv, Store) deriving (Eq, Ord, Show)
 data TStore = TS (FTypeMap, TypeMap) deriving (Eq,Ord,Show)
 
-clearEnv :: Env
-clearEnv = M.empty
 
 clearFEnv :: FEnv
 clearFEnv = M.empty
@@ -43,9 +36,6 @@ clearTMap = M.empty
 
 clearFTMap :: FTypeMap
 clearFTMap = M.empty
-
-initialState :: PState
-initialState = PS (clearEnv, clearStore)
 
 initialTState :: TStore
 initialTState = TS (clearFTMap, clearTMap)
@@ -86,18 +76,18 @@ getFun lident = do
 
 alloc typ = do
 	NS (f, v, (m, loc)) <- get
-	put $ NS (f, v, (M.insert (loc + 1) (typ, defaultValue typ) m, loc + 1))
+	val <- defaultValue typ
+	put $ NS (f, v, (M.insert (loc + 1) (typ, val) m, loc + 1))
 	return $ loc + 1
 
 assign val loc = do
 	NS (f, v, (store, l)) <- get
 	case M.lookup loc store of
-		Just (typ, _) -> if (typeMatches typ val) then
-				put $ NS (f, v, (M.insert loc (typ, val) store, l))
-			else
-				fail $ "Expected " ++ (show typ) ++ ", got " ++ (show (toType val)) ++ ".\n"
+		Just (typ, _) -> put $ NS (f, v, (M.insert loc (typ, val) store, l))
 		Nothing -> fail "Location unalloced"
 
+print (I i) = putStrLn $ show i
+print (B b) = putStrLn $ show b
 
 local fun = do
 	NS (fenv, venv, store) <- get
@@ -114,9 +104,9 @@ localClearVEnv fun  = do
 	put $ NS (fenv, venv, store')
 	return t
 
-localDecl pDecls values fun = do
+localDecl pDecls exprs fun = do
 	NS (fenv, venv, store) <- get
-	let declWithVal = zip pDecls values
+	let declWithVal = zip pDecls exprs
 	forM declWithVal evalPDeclVal 
 	t <- fun
 	NS (_, _, store') <- get
@@ -138,6 +128,11 @@ localTDecl pTypes fun = do
 	put $ TS (env, store)
 	return t
 
+
+
+allocType (Tref typ) lident = do
+	TS (e, store) <- get
+	put $ TS (e, M.insert lident typ store)
 
 allocType typ lident = do
 	TS (e, store) <- get
@@ -169,15 +164,15 @@ getFunParamsTypes lident = do
 -- Type Control --
 ------------------
 
-defaultValue Tint = I 0
-defaultValue Tbool = B False
-defaultValue (Tarr type_) = Ar type_ []
+defaultValue Tint = return $ I 0
+defaultValue Tbool = return $ B False
+defaultValue (Tarr type_) = return $ Ar type_ []
+defaultValue (Tref type_) = fail $ "Reference type does not have default Value.\n"
 
-typeMatches Tint (I _) = True
-typeMatches Tbool (B _) = True
-typeMatches (Tarr typ1) (Ar typ2 _) = typ1 == typ2
-typeMatches (Trec rName1) (Rc rName2 _) = rName1 == rName2
-typeMatches _ _ = False
+typeMatches (Tref typ1) (Tref typ2) = typeMatches typ1 typ2
+typeMatches (Tref typ1) typ2 = typeMatches typ1 typ2
+typeMatches typ1 (Tref typ2) = typeMatches typ1 typ2
+typeMatches typ1 typ2 = typ1 == typ2
 
 toType (I _) = Tint
 toType (B _) = Tbool
@@ -218,6 +213,7 @@ allSame (x:xs) | x == (head xs) = allSame xs
 evalProgram p = runState (evalProg p) initialNStore
 
 checkProgram p = return $ runState (checkProg p) initialTState
+
 
 evalProg (Prog decls) = do
 	val <- foldM evalDecl None decls
@@ -442,21 +438,40 @@ evalSDecl (Svar vDecl) = do
 	return None
 
 evalSDecl (Svas vDecl expr) = do
-	loc <- evalVDecl vDecl
-	val <- evalExpr expr
-	assign val loc
-	return None
+	if isRef vDecl then do
+		loc <- evalRefExpr expr
+		evalRefDecl vDecl loc
+		return None
+	else do
+		loc <- evalVDecl vDecl
+		val <- evalExpr expr
+		assign val loc
+		return None
 
 evalVDecl (VDcl typ lident) = do
 	loc <- alloc typ
 	addVar lident loc
 	return loc
 
+evalRefDecl (VDcl (Tref typ) lident1) loc = do
+	addVar lident1 loc
+	return loc
 
-evalPDeclVal (PDcl vDecl, val) = do
-	loc <- evalVDecl vDecl
-	assign val loc
-	return ()
+
+evalPDeclVal (PDcl vDecl, expr) = do
+	if isRef vDecl then do
+		loc <- evalRefExpr expr
+		evalRefDecl vDecl loc
+		return ()
+	else do
+		value <- evalExpr expr
+		loc <- evalVDecl vDecl
+		assign value loc
+		return ()
+
+isRef (VDcl (Tref _) _) = True
+isRef _ = False
+
 
 
 checkSDecl (Svar vDecl) = do
@@ -582,8 +597,7 @@ evalExpr (Efn lIdent) = do
 
 evalExpr (Efnp lIdent exprs) = do
 	(pDecls, stmtB) <- getFun lIdent
-	values <- foldM (\l e -> do { v <- evalExpr e; return $ l ++ [v] }) [] exprs
-	t <- localDecl pDecls values (evalStmtB None stmtB)
+	t <- localDecl pDecls exprs (evalStmtB None stmtB)
 	return t
 
 evalExpr (Evar (i:is)) = do
@@ -592,6 +606,7 @@ evalExpr (Evar (i:is)) = do
 		(Tint, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tbool, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tarr typ, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tref typ, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 -- 		(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 
 evalExpr (Econ c) = do
@@ -599,6 +614,19 @@ evalExpr (Econ c) = do
 		Efalse -> return $ B False
 		Etrue -> return $ B True
 		Eint i -> return $ I i
+
+
+-- Eval Ref Expression
+
+-- TODO records
+evalRefExpr (Evar (i:is)) = do
+	loc <- getLoc i
+	return loc
+
+evalRefExpr _ = do
+	fail $ "Expresison is not r-value.\n"
+
+
 
 -- Check Expresion Type
 
@@ -767,6 +795,7 @@ checkExpr (Evar (i:is)) = do
 		(Tint) -> if (is == []) then (return Tint) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tbool) -> if (is == []) then (return Tbool) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tarr typ1) -> if (is == []) then (return $ Tarr typ1) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tref typ) -> if (is == []) then return $ typ else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 -- 		(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 
 checkExpr (Econ c) = do
@@ -777,7 +806,7 @@ checkExpr (Econ c) = do
 
 checkParameterType Tvoid ((typ, lident), expr) = do
 	t <- checkExpr expr
-	if typ == t then
+	if typeMatches typ t then
 		return Tvoid
 	else
 		fail "Failed types in function parameters"

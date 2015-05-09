@@ -6,7 +6,7 @@ import Control.Monad.State
 import Data.Maybe
 import Data.Array
 
-data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [M.Map LIdent Loc] | None deriving (Eq,Ord,Show)
+data Value = I Integer | B Bool | Ar Type [Loc] | Rc RecName [M.Map LIdent Loc] | None deriving (Eq,Ord,Show)
 
 type Loc = Int 
 
@@ -63,6 +63,12 @@ getLoc lident = do
 
 getVal lident = do
 	loc <- getLoc lident
+	NS (_, _, (store, _)) <- get
+	case M.lookup loc store of 
+		(Just val) -> return val
+		Nothing -> fail "Location unalloced."
+
+getValL loc = do
 	NS (_, _, (store, _)) <- get
 	case M.lookup loc store of 
 		(Just val) -> return val
@@ -337,13 +343,23 @@ evalStmt None (Sife expr stmtB1 stmtB2) = do
 evalStmt None stmt@(Swh expr stmtB) = do
 	v <- evalExpr expr
 	if (valueToBool v) then do
-		val <- evalStmtB None stmtB
+		val <- local $ evalStmtB None stmtB
 		val <- evalStmt val stmt
 		return val 
 	else 
 		return None
 
---  | Sfor LIdent Exp StmtB
+-- for v in arr
+evalStmt None (Sfor lIdent expr stmtB) = do
+	(Ar t arr) <- evalExpr expr
+	v <- local $ foldM (\val loc -> do {
+		addVar lIdent loc;
+		v <- local $ evalStmtB val stmtB;
+		return v
+	}) None arr
+	return v
+
+
 
 -- return expr
 evalStmt None (Sret expr) = do
@@ -398,13 +414,14 @@ checkStmt Tvoid (Swh expr stmtB) = do
 	else
 		fail $ typeMissmatchS t Tbool
 
---  | Sfor LIdent Exp StmtB
 checkStmt Tvoid (Sfor lident expr stmtB) = do
-	-- TODO check ident
 	t <- checkExpr expr
-	t <- loseTypeFromExpr t
-	val <- checkStmtB t stmtB
-	return val
+	case t of
+		(Tarr typ) -> do
+			t' <- loseTypeFromExpr t
+			val <- localTDecl [(typ, lident)] $ checkStmtB t' stmtB
+			return val
+		_ -> fail "Can not iterate over non array objec.\n"
 
 checkStmt Tvoid (Sret expr) = do
 	t <- checkExpr expr
@@ -501,13 +518,14 @@ checkVDeclF (VDcl typ lident) = do
 evalExpr (EdarR expr1 expr2) = do
 	(I val1) <- evalExpr expr1
 	(I val2) <- evalExpr expr2
-	let retArr = Prelude.map (\i -> I i) $ range (val1, val2) 
+	retArr <- foldM (\l i -> do {loc <- alloc Tint; assign (I i) loc; return $ l ++ [loc]}) [] $ range (val1, val2) 
 	return $ Ar Tint retArr
 
 evalExpr (Edarr exprs) = do
-	values <- foldM (\l e -> do { v <- evalExpr e; return $ l ++ [v] }) [] exprs
-	if (length values) > 0 then 
-		return (Ar (toType (values !! 0)) values)
+	values <- foldM (\l e -> do {v <- evalExpr e; loc <- alloc $ toType v; assign v loc; return $ l ++ [loc] }) [] exprs
+	if (length values) > 0 then do
+		(t, _) <- getValL $ values !! 0
+		return (Ar t values)
 	else
 		return $ I 1
 
@@ -587,8 +605,9 @@ evalExpr (Earr exprI exprV) = do
 	(I i) <- evalExpr exprV
 	if (length arr) <= (fromInteger i) || i < 0 then
 		fail $ "Index out of range"
-	else
-		return $ arr !! (fromInteger i)
+	else do
+		(_, val) <- getValL $ arr !! (fromInteger i)
+		return val
 
 evalExpr (Efn lIdent) = do
 	(_, stmtB) <- getFun lIdent

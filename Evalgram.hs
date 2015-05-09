@@ -4,6 +4,7 @@ import Absgram
 import Data.Map as M
 import Control.Monad.State
 import Data.Maybe
+import Data.Array
 
 data Value = I Integer | B Bool | Ar Type [Value] | Rc RecName [M.Map LIdent Loc] | None deriving (Eq,Ord,Show)
 
@@ -482,6 +483,12 @@ checkVDeclF (VDcl typ lident) = do
 -- Expressions --
 -----------------
 
+evalExpr (EdarR expr1 expr2) = do
+	(I val1) <- evalExpr expr1
+	(I val2) <- evalExpr expr2
+	let retArr = Prelude.map (\i -> I i) $ range (val1, val2) 
+	return $ Ar Tint retArr
+
 evalExpr (Edarr exprs) = do
 	values <- foldM (\l e -> do { v <- evalExpr e; return $ l ++ [v] }) [] exprs
 	if (length values) > 0 then 
@@ -594,6 +601,14 @@ evalExpr (Econ c) = do
 		Eint i -> return $ I i
 
 -- Check Expresion Type
+
+checkExpr (EdarR expr1 expr2) = do
+	typ1 <- checkExpr expr1
+	typ2 <- checkExpr expr2
+	if (typ1 == Tint && typ2 == Tint ) then
+		return $ Tarr Tint
+	else
+		fail $ "Range array declaration require Int expresions on both sides of ':'.\n"
 
 checkExpr (Edarr exprs) = do
 	types <- foldM (\l e -> do { t <- checkExpr e; return $ l ++ [t] }) [] exprs

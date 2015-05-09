@@ -19,7 +19,7 @@ $i = [$l $d _ ']          -- identifier character
 $u = [\0-\255]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \( | \) | "NEWLINE" \  "else" | \= | \; | \, | \[ | \] | \| \| | \& \& | \= \= | \! \= | \> | \> \= | \< | \< \= | \+ | \- | \* | \/ | \! | \.
+   \( | \) | "NEWLINE" \  "else" | \= | \; | \, | \[ | \: | \] | \| \| | \& \& | \= \= | \! \= | \> | \> \= | \< | \< \= | \+ | \- | \* | \/ | \! | \.
 
 :-
 "//" [.]* ; -- Toss single line comments
@@ -90,7 +90,7 @@ eitherResIdent tv s = treeFind resWords
                               | s > a  = treeFind right
                               | s == a = t
 
-resWords = b "Bool" 20 (b "." 10 (b ")" 5 (b "&&" 3 (b "!=" 2 (b "!" 1 N N) N) (b "(" 4 N N)) (b "," 8 (b "+" 7 (b "*" 6 N N) N) (b "-" 9 N N))) (b "=" 15 (b "<" 13 (b ";" 12 (b "/" 11 N N) N) (b "<=" 14 N N)) (b ">=" 18 (b ">" 17 (b "==" 16 N N) N) (b "Array" 19 N N)))) (b "false" 30 (b "NEWLINE else" 25 (b "Int" 23 (b "INDENT" 22 (b "DEDENT" 21 N N) N) (b "NEWLINE" 24 N N)) (b "def" 28 (b "]" 27 (b "[" 26 N N) N) (b "do" 29 N N))) (b "return" 35 (b "if" 33 (b "func" 32 (b "for" 31 N N) N) (b "in" 34 N N)) (b "while" 38 (b "true" 37 (b "then" 36 N N) N) (b "||" 39 N N))))
+resWords = b "Bool" 21 (b "/" 11 (b "*" 6 (b "&&" 3 (b "!=" 2 (b "!" 1 N N) N) (b ")" 5 (b "(" 4 N N) N)) (b "-" 9 (b "," 8 (b "+" 7 N N) N) (b "." 10 N N))) (b "=" 16 (b "<" 14 (b ";" 13 (b ":" 12 N N) N) (b "<=" 15 N N)) (b ">=" 19 (b ">" 18 (b "==" 17 N N) N) (b "Array" 20 N N)))) (b "false" 31 (b "NEWLINE else" 26 (b "Int" 24 (b "INDENT" 23 (b "DEDENT" 22 N N) N) (b "NEWLINE" 25 N N)) (b "def" 29 (b "]" 28 (b "[" 27 N N) N) (b "do" 30 N N))) (b "return" 36 (b "if" 34 (b "func" 33 (b "for" 32 N N) N) (b "in" 35 N N)) (b "while" 39 (b "true" 38 (b "then" 37 N N) N) (b "||" 40 N N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

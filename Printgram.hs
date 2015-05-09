@@ -165,6 +165,7 @@ instance Print PDecl where
 
 instance Print Exp where
   prt i e = case e of
+   EdarR exp0 exp -> prPrec i 0 (concatD [doc (showString "[") , prt 0 exp0 , doc (showString ":") , prt 0 exp , doc (showString "]")])
    Edarr exps -> prPrec i 0 (concatD [doc (showString "[") , prt 0 exps , doc (showString "]")])
    Eor exp0 exp -> prPrec i 2 (concatD [prt 2 exp0 , doc (showString "||") , prt 3 exp])
    Eand exp0 exp -> prPrec i 3 (concatD [prt 3 exp0 , doc (showString "&&") , prt 4 exp])

@@ -56,12 +56,12 @@ The symbols used in gram are the following: \\
 \begin{tabular}{lll}
 {\symb{(}} &{\symb{)}} &{\symb{NEWLINE else}} \\
 {\symb{{$=$}}} &{\symb{;}} &{\symb{,}} \\
-{\symb{[}} &{\symb{]}} &{\symb{{$|$}{$|$}}} \\
-{\symb{\&\&}} &{\symb{{$=$}{$=$}}} &{\symb{!{$=$}}} \\
-{\symb{{$>$}}} &{\symb{{$>$}{$=$}}} &{\symb{{$<$}}} \\
-{\symb{{$<$}{$=$}}} &{\symb{{$+$}}} &{\symb{{$-$}}} \\
-{\symb{*}} &{\symb{/}} &{\symb{!}} \\
-{\symb{.}} & & \\
+{\symb{[}} &{\symb{:}} &{\symb{]}} \\
+{\symb{{$|$}{$|$}}} &{\symb{\&\&}} &{\symb{{$=$}{$=$}}} \\
+{\symb{!{$=$}}} &{\symb{{$>$}}} &{\symb{{$>$}{$=$}}} \\
+{\symb{{$<$}}} &{\symb{{$<$}{$=$}}} &{\symb{{$+$}}} \\
+{\symb{{$-$}}} &{\symb{*}} &{\symb{/}} \\
+{\symb{!}} &{\symb{.}} & \\
 \end{tabular}\\
 
 \subsection*{Comments}
@@ -147,7 +147,8 @@ All other symbols are terminals.\\
 \end{tabular}\\
 
 \begin{tabular}{lll}
-{\nonterminal{Exp}} & {\arrow}  &{\terminal{[}} {\nonterminal{ListExp}} {\terminal{]}}  \\
+{\nonterminal{Exp}} & {\arrow}  &{\terminal{[}} {\nonterminal{Exp}} {\terminal{:}} {\nonterminal{Exp}} {\terminal{]}}  \\
+ & {\delimit}  &{\terminal{[}} {\nonterminal{ListExp}} {\terminal{]}}  \\
  & {\delimit}  &{\nonterminal{Exp2}}  \\
 \end{tabular}\\
 

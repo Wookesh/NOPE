@@ -77,6 +77,7 @@ transPDecl x = case x of
 
 transExp :: Exp -> Result
 transExp x = case x of
+  EdarR exp1 exp2  -> failure x
   Edarr exps  -> failure x
   Eor exp1 exp2  -> failure x
   Eand exp1 exp2  -> failure x

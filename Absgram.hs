@@ -53,7 +53,8 @@ data PDecl =
   deriving (Eq,Ord,Show)
 
 data Exp =
-   Edarr [Exp]
+   EdarR Exp Exp
+ | Edarr [Exp]
  | Eor Exp Exp
  | Eand Exp Exp
  | Eeq Exp Exp

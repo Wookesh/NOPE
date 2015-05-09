@@ -37,11 +37,11 @@ The reserved words used in gram are the following:
 
 The symbols used in gram are the following:
   | ( | ) | NEWLINE else | =
-  | ; | , | [ | ]
-  | || | && | == | !=
-  | > | >= | < | <=
-  | + | - | * | /
-  | ! | . |  | 
+  | ; | , | [ | :
+  | ] | || | && | ==
+  | != | > | >= | <
+  | <= | + | - | *
+  | / | ! | . | 
 
 ===Comments===
 Single-line comments begin with //.There are no multiple-line comments in the grammar.
@@ -83,7 +83,8 @@ All other symbols are terminals.
   |  |  **|**  | //PDecl// ``,`` //[PDecl]// 
   | //[VDecl]// | -> | //VDecl// 
   |  |  **|**  | //VDecl// ``NEWLINE`` //[VDecl]// 
-  | //Exp// | -> | ``[`` //[Exp]// ``]`` 
+  | //Exp// | -> | ``[`` //Exp// ``:`` //Exp// ``]`` 
+  |  |  **|**  | ``[`` //[Exp]// ``]`` 
   |  |  **|**  | //Exp2// 
   | //Exp2// | -> | //Exp2// ``||`` //Exp3// 
   |  |  **|**  | //Exp3// 

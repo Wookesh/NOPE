@@ -26,34 +26,35 @@ import ErrM
  '-' { PT _ (TS _ 9) }
  '.' { PT _ (TS _ 10) }
  '/' { PT _ (TS _ 11) }
- ';' { PT _ (TS _ 12) }
- '<' { PT _ (TS _ 13) }
- '<=' { PT _ (TS _ 14) }
- '=' { PT _ (TS _ 15) }
- '==' { PT _ (TS _ 16) }
- '>' { PT _ (TS _ 17) }
- '>=' { PT _ (TS _ 18) }
- 'Array' { PT _ (TS _ 19) }
- 'Bool' { PT _ (TS _ 20) }
- 'DEDENT' { PT _ (TS _ 21) }
- 'INDENT' { PT _ (TS _ 22) }
- 'Int' { PT _ (TS _ 23) }
- 'NEWLINE' { PT _ (TS _ 24) }
- 'NEWLINE else' { PT _ (TS _ 25) }
- '[' { PT _ (TS _ 26) }
- ']' { PT _ (TS _ 27) }
- 'def' { PT _ (TS _ 28) }
- 'do' { PT _ (TS _ 29) }
- 'false' { PT _ (TS _ 30) }
- 'for' { PT _ (TS _ 31) }
- 'func' { PT _ (TS _ 32) }
- 'if' { PT _ (TS _ 33) }
- 'in' { PT _ (TS _ 34) }
- 'return' { PT _ (TS _ 35) }
- 'then' { PT _ (TS _ 36) }
- 'true' { PT _ (TS _ 37) }
- 'while' { PT _ (TS _ 38) }
- '||' { PT _ (TS _ 39) }
+ ':' { PT _ (TS _ 12) }
+ ';' { PT _ (TS _ 13) }
+ '<' { PT _ (TS _ 14) }
+ '<=' { PT _ (TS _ 15) }
+ '=' { PT _ (TS _ 16) }
+ '==' { PT _ (TS _ 17) }
+ '>' { PT _ (TS _ 18) }
+ '>=' { PT _ (TS _ 19) }
+ 'Array' { PT _ (TS _ 20) }
+ 'Bool' { PT _ (TS _ 21) }
+ 'DEDENT' { PT _ (TS _ 22) }
+ 'INDENT' { PT _ (TS _ 23) }
+ 'Int' { PT _ (TS _ 24) }
+ 'NEWLINE' { PT _ (TS _ 25) }
+ 'NEWLINE else' { PT _ (TS _ 26) }
+ '[' { PT _ (TS _ 27) }
+ ']' { PT _ (TS _ 28) }
+ 'def' { PT _ (TS _ 29) }
+ 'do' { PT _ (TS _ 30) }
+ 'false' { PT _ (TS _ 31) }
+ 'for' { PT _ (TS _ 32) }
+ 'func' { PT _ (TS _ 33) }
+ 'if' { PT _ (TS _ 34) }
+ 'in' { PT _ (TS _ 35) }
+ 'return' { PT _ (TS _ 36) }
+ 'then' { PT _ (TS _ 37) }
+ 'true' { PT _ (TS _ 38) }
+ 'while' { PT _ (TS _ 39) }
+ '||' { PT _ (TS _ 40) }
 
 L_integ  { PT _ (TI $$) }
 L_RecName { PT _ (T_RecName $$) }
@@ -141,7 +142,8 @@ ListVDecl : VDecl { (:[]) $1 }
 
 
 Exp :: { Exp }
-Exp : '[' ListExp ']' { Edarr $2 } 
+Exp : '[' Exp ':' Exp ']' { EdarR $2 $4 } 
+  | '[' ListExp ']' { Edarr $2 }
   | Exp2 { $1 }
 
 

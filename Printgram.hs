@@ -185,6 +185,7 @@ instance Print Exp where
    Earr exp0 exp -> prPrec i 9 (concatD [prt 9 exp0 , doc (showString "[") , prt 0 exp , doc (showString "]")])
    Efn lident -> prPrec i 9 (concatD [prt 0 lident , doc (showString "(") , doc (showString ")")])
    Efnp lident exps -> prPrec i 9 (concatD [prt 0 lident , doc (showString "(") , prt 0 exps , doc (showString ")")])
+   Erec recname exps -> prPrec i 9 (concatD [prt 0 recname , doc (showString "(") , prt 0 exps , doc (showString ")")])
    Evar lidents -> prPrec i 10 (concatD [prt 0 lidents])
    Econ constant -> prPrec i 10 (concatD [prt 0 constant])
 

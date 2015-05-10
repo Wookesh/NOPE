@@ -196,6 +196,7 @@ Exp9 :: { Exp }
 Exp9 : Exp9 '[' Exp ']' { Earr $1 $3 } 
   | LIdent '(' ')' { Efn $1 }
   | LIdent '(' ListExp ')' { Efnp $1 $3 }
+  | RecName '(' ListExp ')' { Erec $1 $3 }
   | Exp10 { $1 }
 
 

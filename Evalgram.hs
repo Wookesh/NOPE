@@ -18,10 +18,11 @@ type REnv = M.Map RecName [Type]
 type Store = (M.Map Loc (Type, Value), Loc)
 
 type TypeMap = M.Map LIdent Type
+type RTypeMap = M.Map RecName (TypeMap, [Type])
 type FTypeMap = M.Map LIdent (Type, [(Type, LIdent)])
 
 data NStore = NS (FEnv, VEnv, Store) deriving (Eq, Ord, Show)
-data TStore = TS (FTypeMap, TypeMap) deriving (Eq,Ord,Show)
+data TStore = TS (FTypeMap, TypeMap, RTypeMap) deriving (Eq,Ord,Show)
 
 
 clearFEnv :: FEnv
@@ -39,11 +40,14 @@ clearStore = (M.empty, 0)
 clearTMap :: TypeMap
 clearTMap = M.empty
 
+clearRTMap :: RTypeMap
+clearRTMap = M.empty
+
 clearFTMap :: FTypeMap
 clearFTMap = M.empty
 
 initialTState :: TStore
-initialTState = TS (clearFTMap, clearTMap)
+initialTState = TS (clearFTMap, clearTMap, clearRTMap)
 
 initialNStore :: NStore
 initialNStore = NS (clearFEnv, clearVEnv, clearStore)
@@ -134,49 +138,86 @@ localDecl pDecls exprs fun = do
 -- Type control stores
 
 localT fun = do
-	TS (env, store) <- get
+	TS (env, store, renv) <- get
 	t <- fun
-	put $ TS (env, store)
+	put $ TS (env, store, renv)
 	return t
 
 localTDecl pTypes fun = do
-	TS (env, store) <- get
+	TS (env, store, renv) <- get
 	forM pTypes (\(t, l) -> allocType t l)
 	t <- fun
-	put $ TS (env, store)
+	put $ TS (env, store, renv)
 	return t
 
 
 
-allocType (Tref typ) lident = do
-	TS (e, store) <- get
-	put $ TS (e, M.insert lident typ store)
+allocType (Tref typ) lIdent = do
+	TS (e, store, r) <- get
+	put $ TS (e, M.insert lIdent typ store, r)
+	return lIdent
 
-allocType typ lident = do
-	TS (e, store) <- get
-	put $ TS (e, M.insert lident typ store)
+allocType (Trec rName) lIdent = do
+	TS (e, store, recEnv) <- get
+	case M.lookup rName recEnv of
+		(Just rec) -> do 
+			put $ TS (e, M.insert lIdent (Trec rName) store, recEnv)
+			return lIdent
+		Nothing -> fail $ "Record (" ++ (show rName) ++ ") is not defined.\n"
+
+allocType typ lIdent = do
+	TS (e, store, r) <- get
+	put $ TS (e, M.insert lIdent typ store, r)
+	return lIdent
 
 getVarType lident = do
-	TS (_, store) <- get
+	TS (_, store, r) <- get
 	case M.lookup lident store of
 		(Just typ) -> return typ
 		Nothing -> fail $ "Variable " ++ (show lident) ++ " undefined.\n"
 
 registerFunc typ pTypes lident = do
-	TS (fstore, s) <- get
-	put $ TS (M.insert lident (typ, pTypes) fstore, s)
+	TS (fstore, s, r) <- get
+	put $ TS (M.insert lident (typ, pTypes) fstore, s, r)
+
+registerRec recName vDecls  = do
+	TS (f, s, recEnv) <- get
+	--put $ TS (f, s, M.insert recName (clearTMap, []) recEnv) -- Recursive records
+	recMap <- foldM (\rmap (VDcl typ lIdent) -> insertToMap lIdent typ rmap) clearTMap vDecls 
+	types <- foldM (\l (VDcl typ lIdent) -> return $ l ++ [typ]) [] vDecls
+	put $ TS (f, s, M.insert recName (recMap, types) recEnv)
 
 getFunType lident = do
-	TS (fstore, _) <- get
+	TS (fstore, _, r) <- get
 	case M.lookup lident fstore of
 		(Just (typ, _)) -> return typ
 		Nothing -> fail $ "Function " ++ (show lident) ++ " undefined.\n"
 
 getFunParamsTypes lident = do
-	TS (fstore, _) <- get
+	TS (fstore, _, r) <- get
 	case M.lookup lident fstore of
 		(Just (_, types)) -> return types
 		Nothing -> fail $ "Function " ++ (show lident) ++ " undefined.\n"
+
+getRecType rName = do
+	TS (_, _, recMap) <- get
+	case M.lookup rName recMap of
+		(Just lmap) -> return lmap
+		Nothing -> fail $ "Record " ++ (show rName) ++ " is undefined.\n"
+
+getRecFieldType lIdent rMap rName = do
+	case M.lookup lIdent rMap of
+		(Just typ) -> return typ
+		Nothing -> fail $ "Record " ++ (show rName) ++ " does not have field " ++ (show lIdent) ++ ".\n"
+
+insertToMap lIdent (Trec rName) rmap = do
+	TS (_, _, r) <- get
+	case M.lookup rName r of
+		(Just _) -> return $ M.insert lIdent (Trec rName) rmap
+		Nothing -> fail $ "Record (" ++ (show rName) ++ ") is not defined.\n"
+
+insertToMap lIdent typ rmap = do
+	return $ M.insert lIdent typ rmap
 
 ------------------
 -- Type Control --
@@ -242,7 +283,7 @@ allSame (x:xs) | x == (head xs) = allSame xs
 
 evalProgram p = evalStateT (evalProg p) initialNStore
 
-checkProgram p = return $ runState (checkProg p) initialTState
+checkProgram p = runStateT (checkProg p) initialTState
 
 evalProg (Prog decls) = do
 	val <- foldM evalDecl None decls
@@ -294,9 +335,9 @@ checkDecl val (Dproc lIdent pDecls stmtB) = do
 	else
 		fail $ "Untyped function " ++ (show lIdent) ++ "returned value.\n"
 
- --checkDecl val (Drec recName vDecls) = do
-
- --	return Tvoid
+checkDecl val (Drec recName vDecls) = do
+ 	registerRec recName vDecls
+ 	return Tvoid
 
 
 ----------------------------
@@ -520,7 +561,7 @@ isRef _ = False
 
 
 checkSDecl (Svar vDecl) = do
-	checkVDecl vDecl
+	lident <- checkVDecl vDecl
 	return Tvoid
 
 checkSDecl (Svas vDecl expr) = do
@@ -532,9 +573,9 @@ checkSDecl (Svas vDecl expr) = do
 	else
 		fail $ typeMissmatchS t locType
 
-checkVDecl (VDcl typ lident) = do
-	allocType typ lident
-	return lident
+checkVDecl (VDcl typ lIdent) = do
+	lIdent <- allocType typ lIdent
+	return lIdent
 
 checkVDeclF (VDcl typ lident) = do
 	return (typ, lident)
@@ -649,6 +690,9 @@ evalExpr (Efnp lIdent exprs) = do
 	t <- localDecl pDecls exprs (evalStmtB None stmtB)
 	return t
 
+--evalExpr (Erec recName exprs) = do
+--	return Tvoid
+
 evalExpr (Evar (i:is)) = do
 	ret <- getVal i
 	case ret of
@@ -724,7 +768,7 @@ checkExpr (Eand e1 e2) = do
 checkExpr (Eeq e1 e2) = do
 	t1 <- checkExpr e1
 	t2 <- checkExpr e2
-	if (t1 ==  t2) then
+	if (t1 == t2) then
 		return Tbool
 	else
 		fail $ typeMissmatch_ t1 t2
@@ -846,6 +890,14 @@ checkExpr (Efnp lIdent exprs) = do
 		else
 			return val
 
+checkExpr (Erec recName exprs) = do
+	(rMap, types) <- getRecType recName
+	val <- foldM checkRecordTypes Tvoid $ zip types exprs
+	if val == Tvoid then
+		return (Trec recName)
+	else
+		return val
+
 checkExpr (Evar (i:is)) = do
 	typ <- getVarType i
 	case typ of
@@ -853,13 +905,33 @@ checkExpr (Evar (i:is)) = do
 		(Tbool) -> if (is == []) then (return Tbool) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tarr typ1) -> if (is == []) then (return $ Tarr typ1) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tref typ) -> if (is == []) then return $ typ else fail $ "Variable " ++ (show i) ++ " is not a Record type"
- 		--(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+ 		(Trec name) -> if (is == []) then return $ typ else checkRecExpr (Evar is) (Trec name)
 
 checkExpr (Econ c) = do
 	case c of
 		Efalse -> return $ Tbool
 		Etrue -> return $ Tbool
 		Eint i -> return $ Tint
+
+checkRecExpr (Evar (i:is)) (Trec rName) = do
+	(lMap, _) <- getRecType rName
+	typ <- getRecFieldType i lMap rName
+	case typ of
+		(Tint) -> if (is == []) then (return Tint) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tbool) -> if (is == []) then (return Tbool) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tarr typ1) -> if (is == []) then (return $ Tarr typ1) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tref typ) -> if (is == []) then return $ typ else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+ 		(Trec name) -> if (is == []) then return $ typ else checkRecExpr (Evar is) (Trec name)
+
+
+checkRecordTypes Tvoid (typ, expr) = do
+	t <- checkExpr expr
+	if typeMatches typ t then
+		return Tvoid
+	else
+		fail "Failed types in record constructor"
+
+checkRecordTypes val _ = return val
 
 checkParameterType Tvoid ((typ, lident), expr) = do
 	t <- checkExpr expr

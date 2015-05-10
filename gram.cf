@@ -59,6 +59,7 @@ Emin.		Exp8 ::= "-" Exp9;
 Earr.		Exp9 ::= Exp9 "[" Exp "]";
 Efn.		Exp9 ::= LIdent "(" ")";
 Efnp.		Exp9 ::= LIdent "(" [Exp] ")";
+Erec.		Exp9 ::= RecName "(" [Exp] ")";
 Evar.		Exp10 ::= [ LIdent ];
 Econ.		Exp10 ::= Constant;
 

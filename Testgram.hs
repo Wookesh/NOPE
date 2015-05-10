@@ -40,6 +40,7 @@ run v p s = let ts = myLLexer (preprocessInput s) in case p ts of
                           putStrLn z
            Ok  tree -> do (ans, tstore) <- checkProgram tree
                           if ans then do
+                            putStrLn $ "Eval\n"
                             i <- evalProgram tree
                             putStrLn $ "\n[End State]\n\n" ++ (show i)
                           else

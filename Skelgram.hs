@@ -97,6 +97,7 @@ transExp x = case x of
   Earr exp1 exp2  -> failure x
   Efn lident  -> failure x
   Efnp lident exps  -> failure x
+  Erec recname exps  -> failure x
   Evar lidents  -> failure x
   Econ constant  -> failure x
 

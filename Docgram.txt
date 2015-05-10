@@ -111,6 +111,7 @@ All other symbols are terminals.
   | //Exp9// | -> | //Exp9// ``[`` //Exp// ``]`` 
   |  |  **|**  | //LIdent// ``(`` ``)`` 
   |  |  **|**  | //LIdent// ``(`` //[Exp]// ``)`` 
+  |  |  **|**  | //RecName// ``(`` //[Exp]// ``)`` 
   |  |  **|**  | //Exp10// 
   | //Exp10// | -> | //[LIdent]// 
   |  |  **|**  | //Constant// 

@@ -73,6 +73,7 @@ data Exp =
  | Earr Exp Exp
  | Efn LIdent
  | Efnp LIdent [Exp]
+ | Erec RecName [Exp]
  | Evar [LIdent]
  | Econ Constant
   deriving (Eq,Ord,Show)

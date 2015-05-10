@@ -25,6 +25,7 @@ Sret.		Stmt ::= "return" Exp;
 Sfcll.	Stmt ::= Exp;
 Sass.		Stmt ::= LIdent "=" Exp;
 Sdecl.	Stmt ::= SDecl;
+Sprt.		Stmt ::= "print" Exp;
 
 separator nonempty Stmt ";";
 

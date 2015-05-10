@@ -32,8 +32,8 @@ The reserved words used in gram are the following:
   | ``Array`` | ``Bool`` | ``DEDENT`` | ``INDENT``
   | ``Int`` | ``NEWLINE`` | ``def`` | ``do``
   | ``false`` | ``for`` | ``func`` | ``if``
-  | ``in`` | ``return`` | ``then`` | ``true``
-  | ``while`` |  |  | 
+  | ``in`` | ``print`` | ``return`` | ``then``
+  | ``true`` | ``while`` |  | 
 
 The symbols used in gram are the following:
   | ( | ) | NEWLINE else | =
@@ -72,6 +72,7 @@ All other symbols are terminals.
   |  |  **|**  | //Exp// 
   |  |  **|**  | //LIdent// ``=`` //Exp// 
   |  |  **|**  | //SDecl// 
+  |  |  **|**  | ``print`` //Exp// 
   | //[Stmt]// | -> | //Stmt// 
   |  |  **|**  | //Stmt// ``;`` //[Stmt]// 
   | //SDecl// | -> | //VDecl// 

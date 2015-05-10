@@ -52,24 +52,20 @@ initialNStore = NS (clearFEnv, clearVEnv, clearStore)
 -- Environment and Store functions --
 -------------------------------------
 
-addVar :: MonadState NStore m => LIdent -> Loc -> m ()
 addVar lident loc = do
 	NS (f, venv, s) <- get
 	put $ NS (f, M.insert lident loc venv, s)
 
-addFun :: MonadState NStore m => LIdent -> t -> [PDecl] -> StmtB -> m ()
 addFun lident typ params stmt = do
 	NS (fenv, v, s) <- get
 	put $ NS (M.insert lident (params, stmt) fenv, v, s)
 
-getLoc :: MonadState NStore m => LIdent -> m Loc
 getLoc lident = do
 	NS (f, venv, s) <- get
 	case M.lookup lident venv of
 		Just l -> return $ l
 		Nothing -> fail $ "Undefined variable" ++ (show lident) ++ ".\n"
 
-getVal :: MonadState NStore m => LIdent -> m (Type, Value)
 getVal lident = do
 	loc <- getLoc lident
 	NS (_, _, (store, _)) <- get
@@ -244,10 +240,11 @@ allSame (x:xs) | x == (head xs) = allSame xs
 -- Program --
 -------------
 
-evalProgram p = runState (evalProg p) initialNStore
+type ProgState a = StateT Integer IO a
+
+evalProgram p = evalStateT (evalProg p) initialNStore
 
 checkProgram p = return $ runState (checkProg p) initialTState
-
 
 evalProg (Prog decls) = do
 	val <- foldM evalDecl None decls
@@ -391,6 +388,7 @@ evalStmt None (Sfor lIdent expr stmtB) = do
 -- return expr
 evalStmt None (Sret expr) = do
 	v <- evalExpr expr
+	--liftIO $ Evalgram.print v
 	return v
 
 -- function call or expression without direct effect
@@ -408,6 +406,12 @@ evalStmt None (Sass lident expr) = do
 -- Type var
 evalStmt None (Sdecl sDecl) = do
 	evalSDecl sDecl
+	return None
+
+-- print something
+evalStmt None (Sprt expr) = do
+	v <- evalExpr expr
+	lift $ Evalgram.print v
 	return None
 
 -- passing non None value

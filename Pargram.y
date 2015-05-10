@@ -51,11 +51,12 @@ import ErrM
  'func' { PT _ (TS _ 34) }
  'if' { PT _ (TS _ 35) }
  'in' { PT _ (TS _ 36) }
- 'return' { PT _ (TS _ 37) }
- 'then' { PT _ (TS _ 38) }
- 'true' { PT _ (TS _ 39) }
- 'while' { PT _ (TS _ 40) }
- '||' { PT _ (TS _ 41) }
+ 'print' { PT _ (TS _ 37) }
+ 'return' { PT _ (TS _ 38) }
+ 'then' { PT _ (TS _ 39) }
+ 'true' { PT _ (TS _ 40) }
+ 'while' { PT _ (TS _ 41) }
+ '||' { PT _ (TS _ 42) }
 
 L_integ  { PT _ (TI $$) }
 L_RecName { PT _ (T_RecName $$) }
@@ -111,6 +112,7 @@ Stmt : 'if' Exp 'then' StmtB { Sif $2 $4 }
   | Exp { Sfcll $1 }
   | LIdent '=' Exp { Sass $1 $3 }
   | SDecl { Sdecl $1 }
+  | 'print' Exp { Sprt $2 }
 
 
 ListStmt :: { [Stmt] }

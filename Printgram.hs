@@ -135,6 +135,7 @@ instance Print Stmt where
    Sfcll exp -> prPrec i 0 (concatD [prt 0 exp])
    Sass lident exp -> prPrec i 0 (concatD [prt 0 lident , doc (showString "=") , prt 0 exp])
    Sdecl sdecl -> prPrec i 0 (concatD [prt 0 sdecl])
+   Sprt exp -> prPrec i 0 (concatD [doc (showString "print") , prt 0 exp])
 
   prtList es = case es of
    [x] -> (concatD [prt 0 x])

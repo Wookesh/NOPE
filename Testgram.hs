@@ -39,8 +39,9 @@ run v p s = let ts = myLLexer (preprocessInput s) in case p ts of
                           putStrLn $ show (preprocessInput s)
                           putStrLn z
            Ok  tree -> do (ans, tstore) <- checkProgram tree
-                          if ans then
-                            putStrLn $ "\n[End State]\n\n" ++ (show $ evalProgram tree)
+                          if ans then do
+                            i <- evalProgram tree
+                            putStrLn $ "\n[End State]\n\n" ++ (show i)
                           else
                             putStrLn $ "\n Type check failed\n" ++ (show tstore)
                           showTree v tree

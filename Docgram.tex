@@ -47,8 +47,8 @@ The reserved words used in gram are the following: \\
 {\reserved{INDENT}} &{\reserved{Int}} &{\reserved{NEWLINE}} \\
 {\reserved{def}} &{\reserved{do}} &{\reserved{false}} \\
 {\reserved{for}} &{\reserved{func}} &{\reserved{if}} \\
-{\reserved{in}} &{\reserved{return}} &{\reserved{then}} \\
-{\reserved{true}} &{\reserved{while}} & \\
+{\reserved{in}} &{\reserved{print}} &{\reserved{return}} \\
+{\reserved{then}} &{\reserved{true}} &{\reserved{while}} \\
 \end{tabular}\\
 
 The symbols used in gram are the following: \\
@@ -115,6 +115,7 @@ All other symbols are terminals.\\
  & {\delimit}  &{\nonterminal{Exp}}  \\
  & {\delimit}  &{\nonterminal{LIdent}} {\terminal{{$=$}}} {\nonterminal{Exp}}  \\
  & {\delimit}  &{\nonterminal{SDecl}}  \\
+ & {\delimit}  &{\terminal{print}} {\nonterminal{Exp}}  \\
 \end{tabular}\\
 
 \begin{tabular}{lll}

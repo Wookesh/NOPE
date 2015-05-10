@@ -37,6 +37,7 @@ data Stmt =
  | Sfcll Exp
  | Sass LIdent Exp
  | Sdecl SDecl
+ | Sprt Exp
   deriving (Eq,Ord,Show)
 
 data SDecl =

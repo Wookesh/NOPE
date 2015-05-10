@@ -57,6 +57,7 @@ transStmt x = case x of
   Sfcll exp  -> failure x
   Sass lident exp  -> failure x
   Sdecl sdecl  -> failure x
+  Sprt exp  -> failure x
 
 
 transSDecl :: SDecl -> Result

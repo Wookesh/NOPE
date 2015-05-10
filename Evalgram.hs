@@ -1,17 +1,19 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Evalgram where
 
 import Absgram
 import Data.Map as M
 import Control.Monad.State
-import Data.Maybe
 import Data.Array
 
-data Value = I Integer | B Bool | Ar Type [Loc] | Rc RecName [M.Map LIdent Loc] | None deriving (Eq,Ord,Show)
+data Value = I Integer | B Bool | Ar Type [Loc] | Rc RecName (M.Map LIdent Loc) | None deriving (Eq,Ord,Show)
 
 type Loc = Int 
 
 type VEnv = M.Map LIdent Loc
 type FEnv = M.Map LIdent ([PDecl], StmtB)
+type REnv = M.Map RecName [Type]
 
 type Store = (M.Map Loc (Type, Value), Loc)
 
@@ -27,6 +29,9 @@ clearFEnv = M.empty
 
 clearVEnv :: VEnv
 clearVEnv = M.empty
+
+clearREnv :: REnv
+clearREnv = M.empty
 
 clearStore :: Store
 clearStore = (M.empty, 0)
@@ -47,20 +52,24 @@ initialNStore = NS (clearFEnv, clearVEnv, clearStore)
 -- Environment and Store functions --
 -------------------------------------
 
+addVar :: MonadState NStore m => LIdent -> Loc -> m ()
 addVar lident loc = do
 	NS (f, venv, s) <- get
 	put $ NS (f, M.insert lident loc venv, s)
 
+addFun :: MonadState NStore m => LIdent -> t -> [PDecl] -> StmtB -> m ()
 addFun lident typ params stmt = do
 	NS (fenv, v, s) <- get
 	put $ NS (M.insert lident (params, stmt) fenv, v, s)
 
+getLoc :: MonadState NStore m => LIdent -> m Loc
 getLoc lident = do
 	NS (f, venv, s) <- get
 	case M.lookup lident venv of
 		Just l -> return $ l
 		Nothing -> fail $ "Undefined variable" ++ (show lident) ++ ".\n"
 
+getVal :: MonadState NStore m => LIdent -> m (Type, Value)
 getVal lident = do
 	loc <- getLoc lident
 	NS (_, _, (store, _)) <- get
@@ -73,6 +82,13 @@ getValL loc = do
 	case M.lookup loc store of 
 		(Just val) -> return val
 		Nothing -> fail "Location unalloced."
+
+getValR lIdent lmap = do
+	case M.lookup lIdent lmap of
+		Just l -> do
+			val <- getValL l
+			return val
+		Nothing -> fail $ "Record does not contain field (" ++ (show lIdent) ++ ").\n"
 
 getFun lident = do
 	NS (fenv, _, _) <- get
@@ -175,19 +191,31 @@ defaultValue Tbool = return $ B False
 defaultValue (Tarr type_) = return $ Ar type_ []
 defaultValue (Tref type_) = fail $ "Reference type does not have default Value.\n"
 
+compareVal (I i1) (I i2) = return $ i1 == i2
+compareVal (B b1) (B b2) = return $ b1 == b2
+compareVal (Ar t1 ls1) (Ar t2 ls2) = if (length ls1) == (length ls2) then do
+										b <- foldM (\b (l1,l2) -> if b then do {(t1,v1) <- getValL l1; (t2,v2) <- getValL l2; b <- compareVal v1 v2; return b} else return b) True $ zip ls1 ls2
+										return b
+									else
+										return False
+compareVal _ _ = return False
+
 typeMatches (Tref typ1) (Tref typ2) = typeMatches typ1 typ2
 typeMatches (Tref typ1) typ2 = typeMatches typ1 typ2
 typeMatches typ1 (Tref typ2) = typeMatches typ1 typ2
 typeMatches typ1 typ2 = typ1 == typ2
 
+toType :: Value -> Type
 toType (I _) = Tint
 toType (B _) = Tbool
 toType (Ar typ _) = (Tarr typ)
 toType (Rc rName _) = (Trec rName)
 
+valueToBool :: Value -> Bool
 valueToBool (B b) = b
 valueToBool _ = False
 
+valueToInt :: Value -> Integer
 valueToInt (I i) = i
 valueToInt _ = 0
 
@@ -271,8 +299,9 @@ checkDecl val (Dproc lIdent pDecls stmtB) = do
 	else
 		fail $ "Untyped function " ++ (show lIdent) ++ "returned value.\n"
 
--- checkDecl val (Drec recName vDecls) = do
--- 	return Tvoid
+ --checkDecl val (Drec recName vDecls) = do
+
+ --	return Tvoid
 
 
 ----------------------------
@@ -358,8 +387,6 @@ evalStmt None (Sfor lIdent expr stmtB) = do
 		return v
 	}) None arr
 	return v
-
-
 
 -- return expr
 evalStmt None (Sret expr) = do
@@ -542,12 +569,14 @@ evalExpr (Eand e1 e2) = do
 evalExpr (Eeq e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	return $ B (v1 == v2)
+	b <- compareVal v1 v2
+	return $ B b
 
 evalExpr (Edif e1 e2) = do
 	v1 <- evalExpr e1
 	v2 <- evalExpr e2
-	return $ B (v1 /= v2)
+	b <- compareVal v1 v2
+	return $ B (not b)
 
 evalExpr (Egt e1 e2) = do
 	v1 <- evalExpr e1
@@ -626,7 +655,7 @@ evalExpr (Evar (i:is)) = do
 		(Tbool, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tarr typ, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tref typ, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
--- 		(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+ 		(Trec n, val@(Rc name lmap)) -> if (is == []) then (return val) else evalExprRec (Evar is) lmap
 
 evalExpr (Econ c) = do
 	case c of
@@ -634,6 +663,14 @@ evalExpr (Econ c) = do
 		Etrue -> return $ B True
 		Eint i -> return $ I i
 
+evalExprRec (Evar (i:is)) lmap = do
+	ret <- getValR i lmap
+	case ret of
+		(Tint, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tbool, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tarr typ, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+		(Tref typ, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+ 		(Trec n, val@(Rc name lmap)) -> if (is == []) then (return val) else evalExprRec (Evar is) lmap
 
 -- Eval Ref Expression
 
@@ -686,18 +723,18 @@ checkExpr (Eand e1 e2) = do
 checkExpr (Eeq e1 e2) = do
 	t1 <- checkExpr e1
 	t2 <- checkExpr e2
-	if (t1 == Tint && t2 == Tint) then
+	if (t1 ==  t2) then
 		return Tbool
 	else
-		fail $ typeMissmatch t1 t2 Tint
+		fail $ typeMissmatch_ t1 t2
 
 checkExpr (Edif e1 e2) = do
 	t1 <- checkExpr e1
 	t2 <- checkExpr e2
-	if (t1 == Tint && t2 == Tint) then
+	if (t1 == t2 ) then
 		return Tbool
 	else
-		fail $ typeMissmatch t1 t2 Tint
+		fail $ typeMissmatch_ t1 t2
 
 checkExpr (Egt e1 e2) = do
 	t1 <- checkExpr e1
@@ -815,7 +852,7 @@ checkExpr (Evar (i:is)) = do
 		(Tbool) -> if (is == []) then (return Tbool) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tarr typ1) -> if (is == []) then (return $ Tarr typ1) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 		(Tref typ) -> if (is == []) then return $ typ else fail $ "Variable " ++ (show i) ++ " is not a Record type"
--- 		(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
+ 		--(Trec, val) -> if (is == []) then (return val) else fail $ "Variable " ++ (show i) ++ " is not a Record type"
 
 checkExpr (Econ c) = do
 	case c of

@@ -240,8 +240,6 @@ allSame (x:xs) | x == (head xs) = allSame xs
 -- Program --
 -------------
 
-type ProgState a = StateT Integer IO a
-
 evalProgram p = evalStateT (evalProg p) initialNStore
 
 checkProgram p = return $ runState (checkProg p) initialTState
@@ -388,7 +386,6 @@ evalStmt None (Sfor lIdent expr stmtB) = do
 -- return expr
 evalStmt None (Sret expr) = do
 	v <- evalExpr expr
-	--liftIO $ Evalgram.print v
 	return v
 
 -- function call or expression without direct effect

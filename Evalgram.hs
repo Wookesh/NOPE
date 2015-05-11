@@ -13,7 +13,7 @@ type Loc = Int
 
 type VEnv = M.Map LIdent Loc
 type FEnv = M.Map LIdent ([PDecl], StmtB)
-type REnv = M.Map RecName [Type]
+type REnv = M.Map RecName [VDecl]
 
 type Store = (M.Map Loc (Type, Value), Loc)
 
@@ -21,7 +21,7 @@ type TypeMap = M.Map LIdent Type
 type RTypeMap = M.Map RecName (TypeMap, [Type])
 type FTypeMap = M.Map LIdent (Type, [(Type, LIdent)])
 
-data NStore = NS (FEnv, VEnv, Store) deriving (Eq, Ord, Show)
+data NStore = NS (FEnv, VEnv, REnv, Store) deriving (Eq, Ord, Show)
 data TStore = TS (FTypeMap, TypeMap, RTypeMap) deriving (Eq,Ord,Show)
 
 
@@ -50,35 +50,39 @@ initialTState :: TStore
 initialTState = TS (clearFTMap, clearTMap, clearRTMap)
 
 initialNStore :: NStore
-initialNStore = NS (clearFEnv, clearVEnv, clearStore)
+initialNStore = NS (clearFEnv, clearVEnv, clearREnv, clearStore)
 
 -------------------------------------
 -- Environment and Store functions --
 -------------------------------------
 
 addVar lident loc = do
-	NS (f, venv, s) <- get
-	put $ NS (f, M.insert lident loc venv, s)
+	NS (f, venv, r, s) <- get
+	put $ NS (f, M.insert lident loc venv, r, s)
 
 addFun lident typ params stmt = do
-	NS (fenv, v, s) <- get
-	put $ NS (M.insert lident (params, stmt) fenv, v, s)
+	NS (fenv, v, r, s) <- get
+	put $ NS (M.insert lident (params, stmt) fenv, v, r, s)
+
+addRec recName vDecls = do
+	NS (f, v, renv, s) <- get
+	put $ NS (f, v, M.insert recName vDecls renv, s)
 
 getLoc lident = do
-	NS (f, venv, s) <- get
+	NS (f, venv, r, s) <- get
 	case M.lookup lident venv of
 		Just l -> return $ l
 		Nothing -> fail $ "Undefined variable" ++ (show lident) ++ ".\n"
 
 getVal lident = do
 	loc <- getLoc lident
-	NS (_, _, (store, _)) <- get
+	NS (_, _, _, (store, _)) <- get
 	case M.lookup loc store of 
 		(Just val) -> return val
 		Nothing -> fail "Location unalloced."
 
 getValL loc = do
-	NS (_, _, (store, _)) <- get
+	NS (_, _, _, (store, _)) <- get
 	case M.lookup loc store of 
 		(Just val) -> return val
 		Nothing -> fail "Location unalloced."
@@ -91,48 +95,54 @@ getValR lIdent lmap = do
 		Nothing -> fail $ "Record does not contain field (" ++ (show lIdent) ++ ").\n"
 
 getFun lident = do
-	NS (fenv, _, _) <- get
+	NS (fenv, _, _, _) <- get
 	case M.lookup lident fenv of
 		Just f -> return f
 		Nothing -> fail $ "Undefined function" ++ (show lident) ++ ".\n"
 
+getRec recName = do
+	NS (_, _, renv, _) <- get
+	case M.lookup recName renv of
+		Just decls -> return decls
+		Nothing -> fail $ "Undefined record " ++ (show recName) ++ ".\n"
+
 alloc typ = do
-	NS (f, v, (m, loc)) <- get
+	NS (f, v, r, (m, loc)) <- get
 	val <- defaultValue typ
-	put $ NS (f, v, (M.insert (loc + 1) (typ, val) m, loc + 1))
+	put $ NS (f, v, r, (M.insert (loc + 1) (typ, val) m, loc + 1))
 	return $ loc + 1
 
 assign val loc = do
-	NS (f, v, (store, l)) <- get
+	NS (f, v, r, (store, l)) <- get
 	case M.lookup loc store of
-		Just (typ, _) -> put $ NS (f, v, (M.insert loc (typ, val) store, l))
+		Just (typ, _) -> put $ NS (f, v, r, (M.insert loc (typ, val) store, l))
 		Nothing -> fail "Location unalloced"
 
 print (I i) = putStrLn $ show i
 print (B b) = putStrLn $ show b
 
 local fun = do
-	NS (fenv, venv, store) <- get
+	NS (fenv, venv, renv, store) <- get
 	t <- fun
-	NS (_, _, store') <- get
-	put $ NS (fenv, venv, store')
+	NS (_, _, _, store') <- get
+	put $ NS (fenv, venv, renv, store')
 	return t
 
 localClearVEnv fun  = do
-	NS (fenv, venv, store) <- get
-	put $ NS (fenv, clearVEnv, store)
+	NS (fenv, venv, renv, store) <- get
+	put $ NS (fenv, clearVEnv, renv, store)
 	t <- fun
-	NS (_, _, store') <- get
-	put $ NS (fenv, venv, store')
+	NS (_, _, _, store') <- get
+	put $ NS (fenv, venv, renv, store')
 	return t
 
 localDecl pDecls exprs fun = do
-	NS (fenv, venv, store) <- get
+	NS (fenv, venv, renv, store) <- get
 	let declWithVal = zip pDecls exprs
 	forM declWithVal evalPDeclVal 
 	t <- fun
-	NS (_, _, store') <- get
-	put $ NS (fenv, venv, store')
+	NS (_, _, _, store') <- get
+	put $ NS (fenv, venv, renv, store')
 	return t
 
 -- Type control stores
@@ -227,6 +237,10 @@ defaultValue Tint = return $ I 0
 defaultValue Tbool = return $ B False
 defaultValue (Tarr type_) = return $ Ar type_ []
 defaultValue (Tref type_) = fail $ "Reference type does not have default Value.\n"
+defaultValue (Trec rName) = do
+	decls <- getRec rName
+	lMap <- foldM (\lMap (VDcl typ lIdent) -> do {loc <- alloc typ; return $ M.insert lIdent loc lMap}) clearVEnv decls
+	return $ Rc rName lMap
 
 compareVal (I i1) (I i2) = return $ i1 == i2
 compareVal (B b1) (B b2) = return $ b1 == b2
@@ -310,6 +324,10 @@ evalDecl val (Dfun typ lIdent pDecls stmtB) = do
 
 evalDecl val (Dproc lIdent pDecls stmtB) = do
 	addFun lIdent Tvoid pDecls stmtB
+	return None
+
+evalDecl val (Drec recName vDecls) = do
+	addRec recName vDecls
 	return None
 
 
@@ -690,8 +708,12 @@ evalExpr (Efnp lIdent exprs) = do
 	t <- localDecl pDecls exprs (evalStmtB None stmtB)
 	return t
 
---evalExpr (Erec recName exprs) = do
---	return Tvoid
+evalExpr (Erec recName exprs) = do
+	decls <- getRec recName
+	values <- foldM (\l e -> do {v <- evalExpr e; return $ l ++ [v] }) [] exprs
+	lMap <- foldM (\lMap (VDcl typ lIdent, val) -> do {loc <- alloc typ; assign val loc; return $ M.insert lIdent loc lMap}) clearVEnv $ zip decls values
+	return $ Rc recName lMap
+
 
 evalExpr (Evar (i:is)) = do
 	ret <- getVal i

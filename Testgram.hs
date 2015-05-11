@@ -29,7 +29,7 @@ putStrV :: Verbosity -> String -> IO ()
 putStrV v s = if v > 1 then putStrLn s else return ()
 
 runFile :: (Print Program, Show Program) => Verbosity -> ParseFun Program -> FilePath -> IO ()
-runFile v p f = putStrLn f >> readFile f >>= run v p
+runFile v p f = readFile f >>= run v p
 
 run :: (Print Program, Show Program) => Verbosity -> ParseFun Program -> String -> IO ()
 run v p s = let ts = myLLexer (preprocessInput s) in case p ts of
@@ -40,9 +40,8 @@ run v p s = let ts = myLLexer (preprocessInput s) in case p ts of
                           putStrLn z
            Ok  tree -> do (ans, tstore) <- checkProgram tree
                           if ans then do
-                            putStrLn $ "Eval\n"
                             i <- evalProgram tree
-                            putStrLn $ "\n[End State]\n\n" ++ (show i)
+                            putStrLn $ (show i)
                           else
                             putStrLn $ "\n Type check failed\n" ++ (show tstore)
                           showTree v tree

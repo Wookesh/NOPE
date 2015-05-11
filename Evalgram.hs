@@ -106,6 +106,11 @@ getRec recName = do
 		Just decls -> return decls
 		Nothing -> fail $ "Undefined record " ++ (show recName) ++ ".\n"
 
+getRecLoc lIdent lMap = do
+	case M.lookup lIdent lMap of
+		Just loc -> return loc
+		Nothing -> fail $ "Undefined record field " ++ (show lIdent) ++ ".\n"
+
 alloc typ = do
 	NS (f, v, r, (m, loc)) <- get
 	val <- defaultValue typ
@@ -118,8 +123,17 @@ assign val loc = do
 		Just (typ, _) -> put $ NS (f, v, r, (M.insert loc (typ, val) store, l))
 		Nothing -> fail "Location unalloced"
 
-print (I i) = putStrLn $ show i
-print (B b) = putStrLn $ show b
+print v = do
+	string  <- print' v
+	lift $ putStrLn string
+
+print' (I i) = return $ show i
+print' (B b) = return $ show b
+print' (Ar typ ls) = return $ show ls
+print' (Rc recName lMap) = do
+	decls <- getRec recName
+	string <- foldM (\str (VDcl typ lIdent) -> do {loc <- getRecLoc lIdent lMap; (t, val) <- getValL loc; str' <- print' val; return $ str ++ ", " ++ str'}) "" decls
+ 	return $ (show recName) ++ "(" ++ ( drop 2 string) ++ ")"
 
 local fun = do
 	NS (fenv, venv, renv, store) <- get
@@ -467,7 +481,7 @@ evalStmt None (Sdecl sDecl) = do
 -- print something
 evalStmt None (Sprt expr) = do
 	v <- evalExpr expr
-	lift $ Evalgram.print v
+	Evalgram.print v
 	return None
 
 -- passing non None value
@@ -713,7 +727,6 @@ evalExpr (Erec recName exprs) = do
 	values <- foldM (\l e -> do {v <- evalExpr e; return $ l ++ [v] }) [] exprs
 	lMap <- foldM (\lMap (VDcl typ lIdent, val) -> do {loc <- alloc typ; assign val loc; return $ M.insert lIdent loc lMap}) clearVEnv $ zip decls values
 	return $ Rc recName lMap
-
 
 evalExpr (Evar (i:is)) = do
 	ret <- getVal i
